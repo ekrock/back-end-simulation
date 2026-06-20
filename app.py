@@ -243,4 +243,4 @@ def delete_run(run_id: str, username: str):
 
 if __name__ == "__main__":
     os.makedirs(DATA_DIR, exist_ok=True)
-    app.run(debug=True)
+    app.run(debug=True, port=5001)
