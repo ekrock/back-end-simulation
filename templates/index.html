@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}Home — Back-End Assembly Line Simulator{% endblock %}
+
+{% block content %}
+<section class="card">
+  <h2>New Simulation Run</h2>
+  {% if error %}
+    <p class="error-msg">{{ error }}</p>
+  {% endif %}
+  <form method="POST" action="{{ url_for('new_run') }}" enctype="multipart/form-data">
+    <div class="form-row">
+      <label for="csv_file">Upload CSV config file:</label>
+      <input type="file" id="csv_file" name="csv_file" accept=".csv" required>
+    </div>
+    <div class="form-actions">
+      <button type="submit" class="btn-primary">Run Simulation</button>
+      <a href="{{ url_for('download_template') }}" class="btn-secondary">Download CSV Template</a>
+    </div>
+  </form>
+</section>
+
+<section class="card">
+  <h2>Past Runs</h2>
+  {% if runs %}
+  <table class="ml-table">
+    <thead>
+      <tr>
+        <th>Run</th>
+        <th>Start Time</th>
+        <th>Parts Completed</th>
+        <th>Total Ticks</th>
+        <th>Status</th>
+        {% if is_admin %}<th></th>{% endif %}
+      </tr>
+    </thead>
+    <tbody>
+      {% for run in runs %}
+      <tr>
+        <td>
+          <a href="{{ url_for('view_run', run_id=run.run_id) }}" class="run-name">{{ run.name }}</a>
+          {% if run.description %}
+            <div class="run-desc">{{ run.description[:120] }}{% if run.description|length > 120 %}…{% endif %}</div>
+          {% endif %}
+        </td>
+        <td class="mono">{{ run.start_time[:19] | replace("T", " ") }}</td>
+        <td class="num">{{ run.parts_completed }}</td>
+        <td class="num">{{ run.total_ticks }}</td>
+        <td><span class="badge badge-{{ run.status }}">{{ run.status }}</span></td>
+        {% if is_admin %}
+        <td>
+          <button class="btn-delete" data-run-id="{{ run.run_id }}" title="Delete run">🗑</button>
+        </td>
+        {% endif %}
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="muted">No runs yet. Upload a CSV to get started.</p>
+  {% endif %}
+</section>
+
+{% if is_admin %}
+<script>
+document.querySelectorAll('.btn-delete').forEach(btn => {
+  btn.addEventListener('click', () => {
+    if (!confirm('Delete this run? This cannot be undone.')) return;
+    const runId = btn.dataset.runId;
+    fetch(`/run/${runId}`, { method: 'DELETE' })
+      .then(r => r.ok ? btn.closest('tr').remove() : alert('Delete failed.'));
+  });
+});
+</script>
+{% endif %}
+{% endblock %}

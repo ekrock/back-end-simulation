@@ -1,0 +1,33 @@
+[SIMULATION]
+name,Cable Harness Simulation Run 1
+description,Baseline run for a three-station cable harness assembly line with one FetchBot and three Assemblers. Tests whether the target takt time of 13 ticks is achievable under standard buffer and distance parameters. Use this run to establish a performance baseline before experimenting with robot counts or buffer sizes.
+max_ticks,500
+
+[JOB]
+name,Cable Harness Assembly
+parts_to_build,10
+target_ticks,13
+
+[LINE]
+input_buffer_size,4
+output_buffer_size,4
+central_store_distance_meters,10
+fetch_trigger_threshold,1
+deliver_trigger_threshold,4
+
+[STATIONS]
+station_name,action_name
+Insert Cable Slot A,insert_cable_slot_a
+Wrap Cable,wrap_cable
+Insert Cable Slot B,insert_cable_slot_b
+
+[ROBOT_TYPES]
+FetchBot,2,50
+fetch parts,5,deliver parts,5
+Assembler,,30
+insert_cable_slot_a,5,wrap_cable,3,insert_cable_slot_b,5
+
+[ROBOTS]
+type_name,count
+FetchBot,1
+Assembler,3

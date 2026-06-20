@@ -1,0 +1,208 @@
+{% extends "base.html" %}
+{% block title %}{{ meta.name }} — Results{% endblock %}
+
+{% block content %}
+
+{# ── 1. Header ── #}
+<section class="card">
+  <div class="run-header">
+    <div>
+      <h2>{{ meta.name }}</h2>
+      {% if meta.description %}
+        <p class="run-description">{{ meta.description }}</p>
+      {% endif %}
+    </div>
+    <span class="badge badge-{{ meta.status }} badge-lg">{{ meta.status }}</span>
+  </div>
+  <p class="run-meta-line">
+    Started: <span class="mono">{{ meta.start_time[:19] | replace("T", " ") }} UTC</span>
+    &nbsp;·&nbsp;
+    Termination: <span class="mono">{{ results.termination_reason }}</span>
+  </p>
+</section>
+
+{# ── 2. Job summary ── #}
+<section class="card">
+  <h3>Job Summary</h3>
+  <table class="ml-table summary-table">
+    <tbody>
+      <tr><td>Parts Completed</td><td class="num">{{ results.parts_completed }}</td></tr>
+      <tr><td>Total Ticks Elapsed</td><td class="num">{{ results.total_ticks }}</td></tr>
+      <tr><td>Target Ticks (goal)</td><td class="num">—</td></tr>
+      <tr><td>Avg Part Cycle Time</td>
+          <td class="num">{% if results.avg_part_cycle_time is not none %}{{ results.avg_part_cycle_time }} ticks{% else %}N/A{% endif %}</td></tr>
+      <tr><td>Avg Line Cycle Time</td>
+          <td class="num">{% if results.avg_line_cycle_time is not none %}{{ results.avg_line_cycle_time }} ticks{% else %}N/A{% endif %}</td></tr>
+      <tr><td>Avg Starvation Gap</td>
+          <td class="num">{% if results.avg_starvation_gap is not none %}{{ results.avg_starvation_gap }} ticks{% else %}N/A{% endif %}</td></tr>
+    </tbody>
+  </table>
+  <p class="footnote">
+    Part Cycle Time = station-1 entry → Output Buffer exit.
+    Line Cycle Time = total ticks ÷ parts completed (throughput rate).
+    Starvation Gap = Line CT − Part CT.
+  </p>
+</section>
+
+{# ── 3. Visualization ── #}
+{% set viz = results.visualization %}
+<section class="card">
+  <h3>Line State at Simulation End</h3>
+  <div class="viz-layout">
+
+    {# Central Store #}
+    <div class="viz-store">
+      <div class="viz-box store-box">Central Store</div>
+      <div class="viz-arrow-down">↓</div>
+    </div>
+
+    {# Line: Input Buffer → Stations → Output Buffer #}
+    <div class="viz-line">
+
+      {# Input Buffer #}
+      {% set ib = viz.input_buffer_count %}
+      {% if ib == 0 %}
+        {% set ib_cls = "buf-red" %}
+      {% elif ib <= 2 %}
+        {% set ib_cls = "buf-yellow" %}
+      {% else %}
+        {% set ib_cls = "buf-green" %}
+      {% endif %}
+      <div class="viz-node {{ ib_cls }}">
+        <div class="node-label">Input Buffer</div>
+        <div class="node-count">{{ ib }}/{{ viz.input_buffer_size }}</div>
+      </div>
+
+      {% for station in viz.stations %}
+        <div class="viz-arrow">→</div>
+        {% if station.state == "Working" %}
+          {% set st_cls = "station-green" %}
+        {% else %}
+          {% set st_cls = "station-red" %}
+        {% endif %}
+        <div class="viz-node {{ st_cls }}">
+          <div class="node-label">{{ station.name }}</div>
+          {% if station.part_present %}<div class="part-sym">⊟</div>{% endif %}
+          {% if station.current_robot %}<div class="robot-tag">{{ station.current_robot }}</div>{% endif %}
+        </div>
+      {% endfor %}
+
+      <div class="viz-arrow">→</div>
+
+      {# Output Buffer #}
+      {% set ob = viz.output_buffer_count %}
+      {% set ob_space = viz.output_buffer_size - ob %}
+      {% if ob_space == 0 %}
+        {% set ob_cls = "buf-red" %}
+      {% elif ob_space <= 2 %}
+        {% set ob_cls = "buf-yellow" %}
+      {% else %}
+        {% set ob_cls = "buf-green" %}
+      {% endif %}
+      <div class="viz-node {{ ob_cls }}">
+        <div class="node-label">Output Buffer</div>
+        <div class="node-count">{{ ob }}/{{ viz.output_buffer_size }}</div>
+      </div>
+
+    </div>{# /viz-line #}
+
+    {# Robot fleet #}
+    <div class="viz-robots">
+      {% for robot in viz.robots %}
+        {% set rt = robot.type_name %}
+        {% if robot.state == "Working" %}
+          {% set r_cls = "robot-working" %}
+        {% else %}
+          {% set r_cls = "robot-idle" %}
+        {% endif %}
+        <div class="robot-box robot-type-{{ loop.index0 % 4 }} {{ r_cls }}">
+          <div class="robot-name">{{ robot.name }}</div>
+          {% if robot.current_station %}
+            <div class="robot-loc">@ {{ robot.current_station }}</div>
+          {% endif %}
+        </div>
+      {% endfor %}
+    </div>
+
+  </div>{# /viz-layout #}
+</section>
+
+{# ── 4. Robot Utilization ── #}
+<section class="card">
+  <h3>Robot Utilization</h3>
+  <p class="summary-avg">Average Robot Utilization: <strong>{{ results.avg_robot_utilization }}%</strong></p>
+  <table class="ml-table">
+    <thead><tr><th>Robot</th><th>Type</th><th>Cost/unit</th><th>Working Ticks</th><th>Utilization</th></tr></thead>
+    <tbody>
+    {% for name, u in results.robot_utilization.items() %}
+      <tr>
+        <td>{{ name }}</td>
+        <td>{{ u.type_name }}</td>
+        <td class="num">${{ u.cost_dollars }}</td>
+        <td class="num">{{ u.working_ticks }}</td>
+        <td class="num">
+          <div class="util-bar-wrap">
+            <div class="util-bar" style="width:{{ u.utilization_pct }}%"></div>
+            <span>{{ u.utilization_pct }}%</span>
+          </div>
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+{# ── 5. Station Utilization ── #}
+<section class="card">
+  <h3>Station Utilization</h3>
+  <p class="summary-avg">Average Station Utilization: <strong>{{ results.avg_station_utilization }}%</strong></p>
+  <table class="ml-table">
+    <thead><tr><th>Station</th><th>Action</th><th>Working Ticks</th><th>Utilization</th></tr></thead>
+    <tbody>
+    {% for name, u in results.station_utilization.items() %}
+      <tr>
+        <td>{{ name }}</td>
+        <td class="mono">{{ u.action_name }}</td>
+        <td class="num">{{ u.working_ticks }}</td>
+        <td class="num">
+          <div class="util-bar-wrap">
+            <div class="util-bar" style="width:{{ u.utilization_pct }}%"></div>
+            <span>{{ u.utilization_pct }}%</span>
+          </div>
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+{# ── 6. Event Log ── #}
+<section class="card">
+  <h3>Event Log</h3>
+  <div class="log-scroll">
+    <table class="ml-table log-table">
+      <thead><tr><th>Tick</th><th>Event</th><th>Station</th><th>Robot</th><th>Action</th><th>Part ID</th></tr></thead>
+      <tbody>
+      {% for e in log_events %}
+        <tr class="log-row-{{ e.event | replace('_','-') }}">
+          <td class="num">{{ e.tick if e.tick is defined else '' }}</td>
+          <td class="mono event-cell">{{ e.event }}</td>
+          <td>{{ e.station if e.station is defined else '' }}</td>
+          <td>{{ e.robot if e.robot is defined else '' }}</td>
+          <td class="mono">{{ e.action if e.action is defined else '' }}</td>
+          <td class="num">{{ e.part_id if e.part_id is defined else '' }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+{# ── 7–9. Links ── #}
+<section class="card links-card">
+  <a href="{{ url_for('download_log', run_id=run_id) }}" class="btn-secondary">Download Event Log</a>
+  <a href="{{ url_for('download_run_csv', run_id=run_id) }}" class="btn-secondary">Download CSV</a>
+  <a href="{{ url_for('index') }}" class="btn-secondary">← Back to Home</a>
+</section>
+
+{% endblock %}

@@ -1,0 +1,19 @@
+[Unit]
+Description=Back-End Assembly Line Simulator
+After=network.target
+
+[Service]
+User=ubuntu
+WorkingDirectory=/home/ubuntu/back-end-simulation
+EnvironmentFile=/home/ubuntu/back-end-simulation/.env
+ExecStart=/home/ubuntu/back-end-simulation/venv/bin/gunicorn \
+    --workers 2 \
+    --bind 127.0.0.1:8000 \
+    --access-logfile /home/ubuntu/back-end-simulation/logs/access.log \
+    --error-logfile /home/ubuntu/back-end-simulation/logs/error.log \
+    app:app
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

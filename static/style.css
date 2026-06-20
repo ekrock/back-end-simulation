@@ -1,0 +1,283 @@
+/* ── Reset & base ──────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 15px;
+  line-height: 1.55;
+  color: #1a1a1a;
+  background: #f4f5f7;
+  min-height: 100vh;
+}
+
+/* ── Layout ──────────────────────────────────────────────────────────────── */
+.site-header {
+  background: #1e293b;
+  padding: 0 24px;
+  height: 52px;
+  display: flex;
+  align-items: center;
+}
+.site-title {
+  color: #f8fafc;
+  font-size: 1rem;
+  font-weight: 600;
+  text-decoration: none;
+  letter-spacing: 0.01em;
+}
+.site-title:hover { color: #94a3b8; }
+
+.container {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 24px 16px 64px;
+}
+
+/* ── Cards ────────────────────────────────────────────────────────────────── */
+.card {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 20px 24px;
+  margin-bottom: 20px;
+}
+.card h2 { font-size: 1.15rem; margin-bottom: 14px; color: #0f172a; }
+.card h3 { font-size: 1.05rem; margin-bottom: 12px; color: #0f172a; }
+
+/* ── Forms ────────────────────────────────────────────────────────────────── */
+.form-row { margin-bottom: 12px; }
+.form-row label { display: block; margin-bottom: 5px; font-weight: 500; }
+.form-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
+
+.btn-primary {
+  background: #2563eb;
+  color: #fff;
+  border: none;
+  border-radius: 5px;
+  padding: 8px 18px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-block;
+}
+.btn-primary:hover { background: #1d4ed8; }
+
+.btn-secondary {
+  background: #fff;
+  color: #374151;
+  border: 1px solid #d1d5db;
+  border-radius: 5px;
+  padding: 8px 16px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-block;
+}
+.btn-secondary:hover { background: #f9fafb; }
+
+.btn-delete {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  color: #6b7280;
+}
+.btn-delete:hover { background: #fee2e2; color: #dc2626; }
+
+/* ── Tables ───────────────────────────────────────────────────────────────── */
+.ml-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+.ml-table th {
+  text-align: left;
+  padding: 8px 10px;
+  border-bottom: 2px solid #e2e8f0;
+  font-weight: 600;
+  color: #374151;
+  white-space: nowrap;
+}
+.ml-table td {
+  padding: 7px 10px;
+  border-bottom: 1px solid #f1f5f9;
+  vertical-align: top;
+}
+.ml-table tr:last-child td { border-bottom: none; }
+.ml-table tr:hover td { background: #f8fafc; }
+
+.num  { text-align: right; font-variant-numeric: tabular-nums; }
+.mono { font-family: "Menlo", "Consolas", monospace; font-size: 13px; }
+
+/* ── Run list ─────────────────────────────────────────────────────────────── */
+.run-name { font-weight: 600; color: #2563eb; text-decoration: none; }
+.run-name:hover { text-decoration: underline; }
+.run-desc { font-size: 12px; color: #6b7280; margin-top: 2px; line-height: 1.4; }
+
+/* ── Badges ───────────────────────────────────────────────────────────────── */
+.badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.badge-completed { background: #dcfce7; color: #166534; }
+.badge-error     { background: #fee2e2; color: #991b1b; }
+.badge-lg { font-size: 14px; padding: 4px 12px; }
+
+/* ── Error messages ───────────────────────────────────────────────────────── */
+.error-msg {
+  background: #fee2e2;
+  border: 1px solid #fca5a5;
+  border-radius: 5px;
+  padding: 8px 12px;
+  color: #991b1b;
+  margin-bottom: 14px;
+  font-size: 14px;
+}
+
+/* ── Results page header ─────────────────────────────────────────────────── */
+.run-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+.run-description {
+  color: #4b5563;
+  font-size: 14px;
+  margin-top: 6px;
+  line-height: 1.5;
+}
+.run-meta-line { font-size: 13px; color: #6b7280; margin-top: 10px; }
+
+/* ── Summary table ────────────────────────────────────────────────────────── */
+.summary-table td:first-child { color: #374151; font-weight: 500; width: 240px; }
+.summary-table td:last-child  { text-align: right; font-variant-numeric: tabular-nums; }
+.footnote { font-size: 12px; color: #9ca3af; margin-top: 10px; line-height: 1.4; }
+
+/* ── Visualization ────────────────────────────────────────────────────────── */
+.viz-layout { display: flex; flex-direction: column; gap: 12px; }
+
+.viz-store { display: flex; flex-direction: column; align-items: flex-start; padding-left: 8px; }
+.viz-arrow-down { font-size: 18px; color: #9ca3af; padding-left: 24px; }
+
+.store-box {
+  background: #f1f5f9;
+  border: 2px solid #94a3b8;
+  border-radius: 6px;
+  padding: 8px 16px;
+  font-weight: 600;
+  font-size: 13px;
+  color: #1e293b;
+}
+
+.viz-line {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.viz-arrow { font-size: 18px; color: #9ca3af; padding: 0 2px; }
+
+.viz-node {
+  border-radius: 6px;
+  border: 2px solid #e2e8f0;
+  padding: 8px 12px;
+  min-width: 90px;
+  text-align: center;
+  font-size: 12px;
+}
+.node-label { font-weight: 600; margin-bottom: 2px; }
+.node-count  { font-size: 13px; font-variant-numeric: tabular-nums; }
+.part-sym    { font-size: 16px; margin: 2px 0; }
+.robot-tag   { font-size: 11px; color: #374151; margin-top: 3px; font-style: italic; }
+
+/* Buffer colors */
+.buf-red    { background: #fee2e2; border-color: #fca5a5; }
+.buf-yellow { background: #fef9c3; border-color: #fde047; }
+.buf-green  { background: #dcfce7; border-color: #86efac; }
+
+/* Station colors */
+.station-green { background: #dcfce7; border-color: #86efac; }
+.station-red   { background: #fee2e2; border-color: #fca5a5; }
+
+/* Robot fleet */
+.viz-robots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-top: 4px;
+}
+.robot-box {
+  padding: 6px 12px;
+  border-radius: 5px;
+  border: 2px solid #d1d5db;
+  min-width: 90px;
+  font-size: 12px;
+  text-align: center;
+}
+.robot-name { font-weight: 600; }
+.robot-loc  { font-size: 11px; color: #6b7280; margin-top: 2px; }
+
+.robot-working { background: #dcfce7; border-color: #86efac; }
+.robot-idle    { background: #fee2e2; border-color: #fca5a5; }
+
+/* Border styles by robot type index (0–3) */
+.robot-type-0 { border-style: solid; }
+.robot-type-1 { border-style: dashed; }
+.robot-type-2 { border-style: dotted; }
+.robot-type-3 { border-style: double; border-width: 3px; }
+
+/* ── Utilization bars ─────────────────────────────────────────────────────── */
+.summary-avg { font-size: 14px; color: #374151; margin-bottom: 10px; }
+
+.util-bar-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 140px;
+}
+.util-bar {
+  height: 10px;
+  background: #2563eb;
+  border-radius: 3px;
+  min-width: 2px;
+  flex-shrink: 0;
+}
+.util-bar-wrap span { font-size: 13px; white-space: nowrap; }
+
+/* ── Event log ────────────────────────────────────────────────────────────── */
+.log-scroll { max-height: 400px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 5px; }
+.log-table  { font-size: 13px; }
+.log-table th { position: sticky; top: 0; background: #f8fafc; z-index: 1; }
+.event-cell { color: #374151; }
+
+.log-row-assign-robot td { background: #f0f9ff; }
+.log-row-finish-job td   { background: #f0fdf4; font-weight: 600; }
+.log-row-end-simulation td { background: #faf5ff; font-weight: 600; }
+.log-row-target-ticks-fallback td { background: #fff7ed; }
+
+/* ── Links card ───────────────────────────────────────────────────────────── */
+.links-card { display: flex; gap: 10px; flex-wrap: wrap; padding: 14px 20px; }
+
+/* ── Misc ─────────────────────────────────────────────────────────────────── */
+.muted { color: #9ca3af; font-style: italic; font-size: 14px; }
+
+/* ── Mobile ───────────────────────────────────────────────────────────────── */
+@media (max-width: 600px) {
+  .container { padding: 12px 10px 48px; }
+  .card { padding: 14px 14px; }
+  .viz-line { gap: 2px; }
+  .viz-node { min-width: 70px; padding: 6px 8px; }
+  .form-actions { flex-direction: column; }
+  .btn-primary, .btn-secondary { width: 100%; text-align: center; }
+  .run-header { flex-direction: column; }
+  .links-card { flex-direction: column; }
+}
