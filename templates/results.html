@@ -31,16 +31,16 @@
       <tr><td>Target Ticks (goal)</td><td class="num">—</td></tr>
       <tr><td>Avg Part Cycle Time</td>
           <td class="num">{% if results.avg_part_cycle_time is not none %}{{ results.avg_part_cycle_time }} ticks{% else %}N/A{% endif %}</td></tr>
-      <tr><td>Avg Line Cycle Time</td>
-          <td class="num">{% if results.avg_line_cycle_time is not none %}{{ results.avg_line_cycle_time }} ticks{% else %}N/A{% endif %}</td></tr>
-      <tr><td>Avg Starvation Gap</td>
-          <td class="num">{% if results.avg_starvation_gap is not none %}{{ results.avg_starvation_gap }} ticks{% else %}N/A{% endif %}</td></tr>
+      <tr><td>Avg Full Cycle Time</td>
+          <td class="num">{% if results.avg_full_cycle_time is not none %}{{ results.avg_full_cycle_time }} ticks{% else %}N/A{% endif %}</td></tr>
+      <tr><td>Avg Non-Value-Added Time</td>
+          <td class="num">{% if results.avg_non_value_added_time is not none %}{{ results.avg_non_value_added_time }} ticks{% else %}N/A{% endif %}</td></tr>
     </tbody>
   </table>
   <p class="footnote">
-    Part Cycle Time = station-1 entry → Output Buffer exit (assembly stations only).
-    Line Cycle Time = Part CT + avg fetch duration + avg deliver duration (full end-to-end per part).
-    Starvation Gap = Line CT − Part CT (fetch + deliver overhead).
+    <strong>Part Cycle Time:</strong> average ticks from station-1 entry to Output Buffer exit (assembly processing only).<br>
+    <strong>Full Cycle Time:</strong> Part Cycle Time + avg fetch duration + avg deliver duration (complete end-to-end per part).<br>
+    <strong>Non-Value-Added Time:</strong> Full Cycle Time − Part Cycle Time (time spent on fetch and deliver, not assembly).
   </p>
 </section>
 

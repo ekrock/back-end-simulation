@@ -101,13 +101,13 @@ def compute(log_path: str, sim_result: dict) -> dict:
     avg_fetch = sum(fetch_durations) / len(fetch_durations) if fetch_durations else 0.0
     avg_deliver = sum(deliver_durations) / len(deliver_durations) if deliver_durations else 0.0
 
-    avg_line_cycle_time = (
+    avg_full_cycle_time = (
         round(avg_part_cycle_time + avg_fetch + avg_deliver, 1)
         if avg_part_cycle_time is not None else None
     )
-    avg_starvation_gap = (
-        round(avg_line_cycle_time - avg_part_cycle_time, 1)
-        if avg_part_cycle_time is not None and avg_line_cycle_time is not None
+    avg_non_value_added_time = (
+        round(avg_full_cycle_time - avg_part_cycle_time, 1)
+        if avg_part_cycle_time is not None and avg_full_cycle_time is not None
         else None
     )
 
@@ -116,8 +116,8 @@ def compute(log_path: str, sim_result: dict) -> dict:
         "parts_completed": parts_completed,
         "termination_reason": sim_result["termination_reason"],
         "avg_part_cycle_time": avg_part_cycle_time,
-        "avg_line_cycle_time": avg_line_cycle_time,
-        "avg_starvation_gap": avg_starvation_gap,
+        "avg_full_cycle_time": avg_full_cycle_time,
+        "avg_non_value_added_time": avg_non_value_added_time,
         "robot_utilization": robot_util,
         "avg_robot_utilization": avg_robot_util,
         "station_utilization": station_util,
