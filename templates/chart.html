@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+{% block title %}Cost vs. Performance — Back-End Assembly Line Simulator{% endblock %}
+
+{% block content %}
+<section class="card">
+  <h2>Cost vs. Performance</h2>
+  <p class="muted" style="margin-bottom:18px">Each point is one completed simulation run. Click a point to open its results.</p>
+
+  <div style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap">
+    <button class="btn-secondary chart-tab active" data-chart="ticks">Total Ticks</button>
+    <button class="btn-secondary chart-tab" data-chart="partct">Part Cycle Time</button>
+  </div>
+
+  <div id="chart-ticks-wrap" style="position:relative;height:420px">
+    <canvas id="chart-ticks"></canvas>
+  </div>
+  <div id="chart-partct-wrap" style="position:relative;height:420px;display:none">
+    <canvas id="chart-partct"></canvas>
+  </div>
+
+  <p id="chart-empty" class="muted" style="display:none;margin-top:16px">
+    No runs with cost data yet. Upload one of the scenario CSV files and run a simulation.
+  </p>
+</section>
+
+<p style="margin-top:12px"><a href="{{ url_for('index') }}">&larr; Back to home</a></p>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<script>
+(function() {
+  var chartTicks = null;
+  var chartPartct = null;
+
+  function buildDataset(points) {
+    return points.map(function(p) {
+      return {
+        x: p.fleet_cost,
+        y_ticks: p.total_ticks,
+        y_partct: p.avg_part_cycle_time,
+        label: p.name,
+        run_id: p.run_id,
+        parts: p.parts_completed,
+        target: p.target_ticks,
+      };
+    });
+  }
+
+  function fmtCost(v) {
+    return '$' + v.toLocaleString();
+  }
+
+  function makeChart(canvasId, pts, yKey, yLabel) {
+    var ctx = document.getElementById(canvasId).getContext('2d');
+    var data = pts.map(function(p) { return { x: p.fleet_cost, y: p[yKey], meta: p }; });
+    return new Chart(ctx, {
+      type: 'scatter',
+      data: {
+        datasets: [{
+          label: yLabel,
+          data: data,
+          backgroundColor: 'rgba(37, 99, 235, 0.7)',
+          borderColor: 'rgba(37, 99, 235, 1)',
+          pointRadius: 7,
+          pointHoverRadius: 10,
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              title: function(items) {
+                return items[0].raw.meta.label;
+              },
+              label: function(item) {
+                var d = item.raw;
+                return [
+                  'Fleet cost: ' + fmtCost(d.x),
+                  yLabel + ': ' + d.y + ' ticks',
+                  'Parts: ' + d.meta.parts,
+                  d.meta.target ? 'Target: ' + d.meta.target + ' ticks' : null,
+                ].filter(Boolean);
+              }
+            }
+          }
+        },
+        scales: {
+          x: {
+            title: { display: true, text: 'Total Robot Fleet Cost ($)' },
+            ticks: {
+              callback: function(v) { return '$' + v.toLocaleString(); }
+            }
+          },
+          y: {
+            title: { display: true, text: yLabel + ' (ticks)' },
+            beginAtZero: false,
+          }
+        },
+        onClick: function(evt, elements) {
+          if (elements.length > 0) {
+            var run_id = elements[0].element.$context.raw.meta.run_id;
+            window.location.href = '/run/' + run_id;
+          }
+        },
+        onHover: function(evt, elements) {
+          evt.native.target.style.cursor = elements.length > 0 ? 'pointer' : 'default';
+        }
+      }
+    });
+  }
+
+  fetch('/api/chart-data')
+    .then(function(r) { return r.json(); })
+    .then(function(points) {
+      if (points.length === 0) {
+        document.getElementById('chart-empty').style.display = '';
+        document.getElementById('chart-ticks-wrap').style.display = 'none';
+        return;
+      }
+      var pts = buildDataset(points);
+      chartTicks  = makeChart('chart-ticks',  pts, 'y_ticks',  'Total Ticks Elapsed');
+      chartPartct = makeChart('chart-partct', pts, 'y_partct', 'Avg Part Cycle Time');
+    });
+
+  document.querySelectorAll('.chart-tab').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      document.querySelectorAll('.chart-tab').forEach(function(b) { b.classList.remove('active'); });
+      btn.classList.add('active');
+      var which = btn.dataset.chart;
+      document.getElementById('chart-ticks-wrap').style.display  = which === 'ticks'  ? '' : 'none';
+      document.getElementById('chart-partct-wrap').style.display = which === 'partct' ? '' : 'none';
+    });
+  });
+})();
+</script>
+{% endblock %}

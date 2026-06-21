@@ -242,6 +242,49 @@ def download_run_csv(run_id: str, username: str):
                      download_name=f"{run_id}_config.csv")
 
 
+@app.route("/chart")
+@require_auth
+def chart(username: str):
+    return render_template("chart.html")
+
+
+@app.route("/api/chart-data")
+@require_auth
+def chart_data(username: str):
+    points = []
+    for run in _list_runs():
+        if run.get("status") != "completed":
+            continue
+        robot_types = run.get("robot_types")
+        robot_counts = run.get("robot_counts")
+        if not robot_types or not robot_counts:
+            continue
+        cost_map = {rt["type_name"]: rt["cost_dollars"] for rt in robot_types}
+        fleet_cost = sum(
+            rc["count"] * cost_map.get(rc["type_name"], 0)
+            for rc in robot_counts
+        )
+        results_path = os.path.join(_run_dir(run["run_id"]), "results.json")
+        if not os.path.exists(results_path):
+            continue
+        with open(results_path) as f:
+            results = json.load(f)
+        avg_part_ct = results.get("avg_part_cycle_time")
+        total_ticks = run.get("total_ticks")
+        if fleet_cost is None or avg_part_ct is None or total_ticks is None:
+            continue
+        points.append({
+            "run_id": run["run_id"],
+            "name": run.get("name", run["run_id"]),
+            "fleet_cost": fleet_cost,
+            "avg_part_cycle_time": avg_part_ct,
+            "total_ticks": total_ticks,
+            "parts_completed": run.get("parts_completed"),
+            "target_ticks": run.get("target_ticks"),
+        })
+    return jsonify(points)
+
+
 @app.route("/run/<run_id>", methods=["DELETE"])
 @require_auth
 def delete_run(run_id: str, username: str):
