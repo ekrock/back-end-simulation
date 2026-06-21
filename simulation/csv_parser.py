@@ -130,7 +130,7 @@ def parse_csv(text: str) -> SimConfig:
         if len(row1) < 3:
             raise ParseError(f"[ROBOT_TYPES] line {i+1}: expected type_name,speed,cost")
         type_name = row1[0]
-        speed = int(row1[1]) if row1[1] else None
+        speed = float(row1[1]) if row1[1] else None
         cost = int(row1[2])
 
         i += 1

@@ -1,33 +1,36 @@
 [SIMULATION]
-name,Cable Harness Simulation Run 1
-description,Baseline run for a three-station cable harness assembly line with one FetchBot and three Assemblers. Tests whether the target takt time of 13 ticks is achievable under standard buffer and distance parameters. Use this run to establish a performance baseline before experimenting with robot counts or buffer sizes.
-max_ticks,500
+name,PCB Assembly — Single AMR Baseline
+description,Three-station PCB assembly line with two Stationary Assemblers and one Dexterous Robotic Arm. A single AMR shuttles parts to and from Central Store 60 m away (60 ticks at 1 m/s; each tick = 1 second). With buffer size 10 and the line consuming one part every ~10 ticks, the AMR cannot fetch and deliver simultaneously — the line stalls periodically. Vary the AMR count to 2 and compare throughput.
+max_ticks,3000
 
 [JOB]
-name,Cable Harness Assembly
-parts_to_build,10
-target_ticks,13
+name,PCB Assembly
+parts_to_build,50
+target_ticks,12
 
 [LINE]
-input_buffer_size,4
-output_buffer_size,4
-central_store_distance_meters,10
-fetch_trigger_threshold,1
-deliver_trigger_threshold,4
+input_buffer_size,10
+output_buffer_size,10
+central_store_distance_meters,60
+fetch_trigger_threshold,0
+deliver_trigger_threshold,10
 
 [STATIONS]
 station_name,action_name
-Insert Cable Slot A,insert_cable_slot_a
-Wrap Cable,wrap_cable
-Insert Cable Slot B,insert_cable_slot_b
+Component Placement,component_placement
+Solder Reflow,solder_reflow
+Quality Inspection,quality_inspection
 
 [ROBOT_TYPES]
-FetchBot,2,50
-fetch parts,5,deliver parts,5
-Assembler,,30
-insert_cable_slot_a,5,wrap_cable,3,insert_cable_slot_b,5
+AMR,1.0,40000
+fetch parts,60,deliver parts,60
+Stationary Assembler,,25000
+component_placement,10,solder_reflow,10,quality_inspection,15
+Dexterous Robotic Arm,,80000
+component_placement,7,solder_reflow,7,quality_inspection,9
 
 [ROBOTS]
 type_name,count
-FetchBot,1
-Assembler,3
+AMR,1
+Stationary Assembler,2
+Dexterous Robotic Arm,1
