@@ -74,8 +74,36 @@ def compute(log_path: str, sim_result: dict) -> dict:
     avg_part_cycle_time = (
         round(sum(cycle_times) / len(cycle_times), 1) if cycle_times else None
     )
+
+    # Line Cycle Time = APCT + avg fetch duration + avg deliver duration.
+    # This is the true end-to-end time per part (Central Store → line → Central Store)
+    # and is always >= APCT.
+    fetch_durations = []
+    deliver_durations = []
+    fetch_start: dict[str, int] = {}
+    deliver_start: dict[str, int] = {}
+    for e in events:
+        if e.get("action") == "fetch parts":
+            if e["event"] == "start_action":
+                fetch_start[e.get("robot", "")] = e["tick"]
+            elif e["event"] == "finish_action":
+                robot = e.get("robot", "")
+                if robot in fetch_start:
+                    fetch_durations.append(e["tick"] - fetch_start.pop(robot))
+        elif e.get("action") == "deliver parts":
+            if e["event"] == "start_action":
+                deliver_start[e.get("robot", "")] = e["tick"]
+            elif e["event"] == "finish_action":
+                robot = e.get("robot", "")
+                if robot in deliver_start:
+                    deliver_durations.append(e["tick"] - deliver_start.pop(robot))
+
+    avg_fetch = sum(fetch_durations) / len(fetch_durations) if fetch_durations else 0.0
+    avg_deliver = sum(deliver_durations) / len(deliver_durations) if deliver_durations else 0.0
+
     avg_line_cycle_time = (
-        round(total_ticks / parts_completed, 1) if parts_completed > 0 else None
+        round(avg_part_cycle_time + avg_fetch + avg_deliver, 1)
+        if avg_part_cycle_time is not None else None
     )
     avg_starvation_gap = (
         round(avg_line_cycle_time - avg_part_cycle_time, 1)

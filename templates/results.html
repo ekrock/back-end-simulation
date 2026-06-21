@@ -38,9 +38,9 @@
     </tbody>
   </table>
   <p class="footnote">
-    Part Cycle Time = station-1 entry → Output Buffer exit.
-    Line Cycle Time = total ticks ÷ parts completed (throughput rate).
-    Starvation Gap = Line CT − Part CT.
+    Part Cycle Time = station-1 entry → Output Buffer exit (assembly stations only).
+    Line Cycle Time = Part CT + avg fetch duration + avg deliver duration (full end-to-end per part).
+    Starvation Gap = Line CT − Part CT (fetch + deliver overhead).
   </p>
 </section>
 
