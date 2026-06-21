@@ -7,7 +7,7 @@ APP_DIR=/home/ubuntu/back-end-simulation
 
 # ── System packages ──────────────────────────────────────────────────────────
 sudo apt-get update -y
-sudo apt-get install -y python3.12 python3.12-venv python3.12-dev \
+sudo apt-get install -y python3 python3-venv python3-dev \
     nginx git
 
 # ── Clone / pull repo ────────────────────────────────────────────────────────
@@ -21,7 +21,7 @@ else
 fi
 
 # ── Python venv + dependencies ───────────────────────────────────────────────
-python3.12 -m venv venv
+python3 -m venv venv
 venv/bin/pip install --upgrade pip
 venv/bin/pip install -r requirements.txt
 
