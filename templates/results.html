@@ -177,7 +177,7 @@
   <h3>Robot Utilization</h3>
   <p class="summary-avg">Average Robot Utilization: <strong>{{ results.avg_robot_utilization }}%</strong></p>
   <table class="ml-table">
-    <thead><tr><th>Robot</th><th>Type</th><th class="num">Cost/unit</th><th class="num">Working Ticks</th><th class="num">Utilization</th></tr></thead>
+    <thead><tr><th>Robot</th><th>Type</th><th class="num">Cost/unit</th><th class="num">Working Ticks</th><th>Utilization</th></tr></thead>
     <tbody>
     {% for name, u in results.robot_utilization.items() %}
       <tr>
@@ -202,7 +202,7 @@
   <h3>Station Utilization</h3>
   <p class="summary-avg">Average Station Utilization: <strong>{{ results.avg_station_utilization }}%</strong></p>
   <table class="ml-table">
-    <thead><tr><th>Station</th><th>Action</th><th class="num">Working Ticks</th><th class="num">Utilization</th></tr></thead>
+    <thead><tr><th>Station</th><th>Action</th><th class="num">Working Ticks</th><th>Utilization</th></tr></thead>
     <tbody>
     {% for name, u in results.station_utilization.items() %}
       <tr>
