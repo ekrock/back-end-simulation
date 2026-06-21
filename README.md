@@ -2,7 +2,7 @@
 
 A tick-based discrete-event simulator for back-end assembly lines. Upload a CSV configuration, run the simulation, and explore OEE metrics, robot utilization, station throughput, and a full event log.
 
-Built as a portfolio artifact for Intrinsic robotics interview.
+Open-source portfolio and reference implementation of a robot-orchestrated back-end assembly line simulator.
 
 ## Local Development
 

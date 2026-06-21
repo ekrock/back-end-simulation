@@ -1,0 +1,787 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PRD: Back-End Assembly Line Simulator (v1-Simple — Weekend Build) — Back-End Simulation docs</title>
+<style>
+body {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 24px 28px 80px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  line-height: 1.55;
+  color: #1c2233;
+  background: #ffffff;
+}
+h1, h2, h3, h4 { line-height: 1.25; margin-top: 1.6em; color: #1c2233; }
+h1 { font-size: 28px; border-bottom: 2px solid #d0d4dc; padding-bottom: 8px; }
+h2 { font-size: 22px; border-bottom: 1px solid #e4e7ec; padding-bottom: 4px; margin-top: 2em; }
+h3 { font-size: 18px; }
+h4 { font-size: 15px; color: #4a5568; }
+p { margin: 0.8em 0; }
+a { color: #1d4ed8; text-decoration: none; }
+a:hover { text-decoration: underline; }
+code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  background: #f4f5f7; padding: 1px 5px; border-radius: 3px; font-size: 0.92em;
+  color: #1c2233; border: 1px solid #e4e7ec;
+}
+pre {
+  background: #f7f8fa; color: #1c2233; padding: 12px 16px; border-radius: 6px;
+  overflow-x: auto; font-size: 13px; line-height: 1.5;
+  border: 1px solid #d0d4dc;
+}
+pre code { background: transparent; padding: 0; color: inherit; border: none; }
+.copy-wrap { position: relative; margin: 1em 0; }
+.copy-btn {
+  position: absolute; top: 6px; right: 8px;
+  background: #ffffff; color: #1c2233;
+  border: 1px solid #374151; border-radius: 4px;
+  font-family: inherit; font-size: 12px; font-weight: 600;
+  padding: 4px 10px; cursor: pointer; opacity: 0.85;
+  transition: opacity 0.15s, background 0.15s, color 0.15s;
+}
+.copy-btn:hover { opacity: 1; background: #f0f4ff; }
+.copy-btn.copied { background: #1d4ed8; color: #ffffff; border-color: #1d4ed8; }
+.copy-btn.failed { background: #fee2e2; color: #7f1d1d; border-color: #7f1d1d; }
+.copy-wrap pre { margin: 0; padding-right: 84px; }
+@media print {
+  .copy-btn { display: none; }
+  .copy-wrap pre { padding-right: 16px; }
+}
+blockquote {
+  margin: 1em 0; padding: 8px 16px; background: #eff6ff;
+  border-left: 4px solid #1d4ed8; color: #1e3a5f;
+}
+table { border-collapse: collapse; margin: 1em 0; width: 100%; }
+th, td { border: 1px solid #d0d4dc; padding: 6px 10px; text-align: left; }
+th { background: #eef0f4; font-weight: 700; color: #1c2233; }
+tr:nth-child(even) td { background: #f7f8fa; }
+ul, ol { padding-left: 1.6em; margin: 0.6em 0; }
+li { margin: 0.2em 0; }
+hr { border: none; border-top: 1px solid #d0d4dc; margin: 2em 0; }
+.doc-header {
+  display: flex; justify-content: space-between; align-items: baseline;
+  font-size: 12px; color: #6b7280; padding-bottom: 12px;
+  border-bottom: 1px solid #e4e7ec; margin-bottom: 12px;
+}
+.doc-header a { color: #6b7280; }
+.doc-header a:hover { color: #1d4ed8; }
+@media print {
+  body { padding: 12px 12px 60px; }
+  .doc-header { display: none; }
+  pre, code { background: #ffffff !important; border-color: #6b7280 !important; }
+  th { background: #ffffff !important; border-color: #1c2233 !important; }
+  tr:nth-child(even) td { background: #ffffff !important; }
+  a { color: #1c2233; text-decoration: underline; }
+}
+</style>
+</head>
+<body>
+<div class="doc-header">
+  <span><a href="index.html">← Index</a></span>
+  <span>Generated from <code>PRD.md</code></span>
+</div>
+<h1>PRD: Back-End Assembly Line Simulator (v1-Simple — Weekend Build)</h1>
+<p><strong>Last Updated:</strong> 2026-06-20 10:30 PM PT <strong>Status:</strong> Implemented — live at https://backendsim.com <strong>GitHub repo:</strong> <code>ekrock/back-end-simulation</code> (public) <strong>Deadline:</strong> EOD Saturday <strong>Author:</strong> Eric Krock <strong>Purpose:</strong> Open-source portfolio and reference implementation demonstrating robot orchestration, tick-based discrete-event simulation, structured logging, and analytics for a back-end electronics assembly line.</p>
+<hr>
+<h2>Build Notes</h2>
+<ul>
+<li>Build and verify locally first. Do not touch EC2 until the app runs end-to-end on localhost.</li>
+<li>Build in this order: (1) simulation engine, (2) Flask web layer, (3) EC2 deployment.</li>
+<li>Use Python 3.11+. Use Flask for the web layer. No external simulation libraries needed.</li>
+<li>Keep everything in one repo. Minimize dependencies.</li>
+<li>After each stage, confirm it works before moving to the next.</li>
+<li>If something is ambiguous, make a reasonable decision, implement it, leave a comment, and keep going. Do not stop to ask unless it is truly blocking.</li>
+<li>The simulation runs to completion server-side, then displays results. No WebSockets, no live tick-by-tick streaming.</li>
+<li>Phase 2 features are listed at the bottom. Do not implement them now.</li>
+</ul>
+<hr>
+<h2>1. Overview</h2>
+<p>A single-page web application that lets a user upload a CSV configuration file, run a tick-based assembly line simulation, and view the results: a structured log, robot and station utilization analytics, and a static visualization of the line's final state.</p>
+<p><strong>The simulation demonstrates:</strong></p>
+<ul>
+<li>Tick-based discrete-event simulation of a robot-staffed back-end assembly line</li>
+<li>Simple threshold-based rules governing fetch and deliver robot behavior</li>
+<li>Robot assignment based on cost and Target Takt Time</li>
+<li>Structured activity logging</li>
+<li>Utilization analytics derived from log data</li>
+</ul>
+<p><strong>Stack:</strong></p>
+<ul>
+<li>Backend: Python 3.11, Flask</li>
+<li>Simulation engine: pure Python, no external simulation libraries needed</li>
+<li>Frontend: single HTML template with inline CSS and vanilla JS (no frameworks)</li>
+<li>Storage: local filesystem (simulation runs stored as folders under <code>/data/runs/</code>)</li>
+<li>Auth: HTTP Basic Auth via environment variables</li>
+<li>Deployment: AWS EC2, Ubuntu 24.04, gunicorn behind nginx, HTTPS via Let's Encrypt</li>
+<li>Domain: <strong>backendsim.com</strong></li>
+</ul>
+<hr>
+<h2>2. Term definitions</h2>
+<p><strong>Tick:</strong> The atomic unit of simulation time. Tick 0 is the first. Each tick, every station and robot is evaluated once in order.</p>
+<p><strong>Job:</strong> A named task with a specified number of parts to build on a given line. A job is complete when all its parts have passed through all stations, reached the Output Buffer, and been delivered back to Central Store.</p>
+<p><strong>Part:</strong> One unit of work. Each part flows left-to-right through all stations on the line, from Input Buffer through assembly stations to Output Buffer.</p>
+<p><strong>Line:</strong> The assembly line. One line per simulation run in v1.</p>
+<p><strong>Station:</strong> A named step on the line. Every line has a fixed Input Buffer (first) and Output Buffer (last), plus 1-N assembly stations in between.</p>
+<p><strong>Action:</strong> The task performed at a station (e.g., "insert cable into slot A"). Each assembly station has exactly one required action.</p>
+<p><strong>Robot:</strong> An agent that performs actions at stations. Each robot has a type, a name, a set of supported actions, ticks required per action, and a cost.</p>
+<p><strong>Robot Type:</strong> A class of robots sharing capabilities and costs. Individual robots are named TypeName + integer starting at 1 (e.g., "Assembler1", "Assembler2").</p>
+<p><strong>Idle state:</strong> Robot is available for assignment. <strong>Working state:</strong> Robot is assigned to a station or performing fetch/deliver and is unavailable until required ticks have elapsed.</p>
+<p><strong>Target Ticks (per Job):</strong> The company's goal for how many ticks each part should take to build. Analogous to Target Takt Time on an SMT line. Used to filter robot candidates during assignment: a robot whose ticks_per_action exceeds this goal is deprioritized.</p>
+<p><strong>Max Ticks (per Simulation):</strong> The hard ceiling on simulation runtime. If the job is not complete by this tick, the simulation stops with reason <code>max_ticks_reached</code>.</p>
+<hr>
+<h2>3. Simulation run configuration (CSV)</h2>
+<p>The user downloads a CSV template, fills it in, and uploads it. The CSV uses a section-based format: a section header row in column A, followed by data rows.</p>
+<p><strong>Claude Code: generate <code>static/sample_config.csv</code> pre-filled with a working example the user can upload immediately to see a simulation run.</strong></p>
+<h3>CSV sections and fields</h3>
+<pre><code>
+[SIMULATION]
+name,&lt;string&gt;
+description,&lt;string&gt;
+max_ticks,&lt;integer&gt;
+
+[JOB]
+name,&lt;string&gt;
+parts_to_build,&lt;integer&gt;
+target_ticks,&lt;integer&gt;
+
+[LINE]
+input_buffer_size,&lt;integer&gt;
+output_buffer_size,&lt;integer&gt;
+central_store_distance_meters,&lt;integer&gt;
+fetch_trigger_threshold,&lt;integer&gt;
+deliver_trigger_threshold,&lt;integer&gt;
+
+[STATIONS]
+station_name,action_name
+&lt;string&gt;,&lt;string&gt;
+...one row per assembly station, not including Input Buffer or Output Buffer...
+
+[ROBOT_TYPES]
+&lt;type_name&gt;,&lt;speed_meters_per_tick&gt;,&lt;cost_dollars&gt;
+&lt;action_name&gt;,&lt;ticks_per_action&gt;[,&lt;action_name&gt;,&lt;ticks_per_action&gt;...]
+...repeat the two-line block for each robot type...
+
+[ROBOTS]
+type_name,count
+&lt;string&gt;,&lt;integer&gt;
+...
+</code></pre>
+<h3>Field notes</h3>
+<p><strong>name (Simulation):</strong> A short, concise identifier for this simulation run (e.g. "Cable Harness Sim Run 1").</p>
+<p><strong>description (Simulation):</strong> A paragraph-length explanation of the run's purpose — what configuration is being tested, what question it answers, or what scenario it represents. Displayed alongside the name throughout the web app.</p>
+<p><strong>max_ticks:</strong> Hard ceiling on simulation runtime. The simulation stops at this tick if the job is not yet complete.</p>
+<p><strong>target_ticks (Job):</strong> The company's goal for part cycle time in ticks. Used during robot assignment (see Section 4). Does not stop the simulation.</p>
+<p><strong>fetch_trigger_threshold:</strong> The engine requests a fetch-capable robot for this line whenever <code>input_buffer_count &lt;= fetch_trigger_threshold</code>. For example, if set to 1, fetch is requested whenever the input buffer has 1 or fewer parts remaining.</p>
+<p><strong>deliver_trigger_threshold:</strong> The engine requests a deliver-capable robot for this line whenever <code>output_buffer_count &gt;= deliver_trigger_threshold</code>. For example, if set to output_buffer_size, deliver is requested only when the buffer is completely full.</p>
+<p><strong>[ROBOT_TYPES] two-line format per robot type:</strong></p>
+<ul>
+<li>Line 1: <code>type_name,speed_meters_per_tick,cost_dollars</code> — <code>speed_meters_per_tick</code> is blank for robots that do not move (assemblers). — <code>cost_dollars</code> is an integer.</li>
+<li>Line 2: sequential action/ticks pairs — <code>action_name,ticks_per_action</code> repeated for every action this type supports, all on one comma-separated line.</li>
+</ul>
+<p><strong>fetch parts / deliver parts:</strong> Reserved action names. Robots listing them must have a <code>speed_meters_per_tick</code> value on line 1. Duration is calculated as <code>ceil(central_store_distance_meters / speed_meters_per_tick)</code>. Any <code>ticks_per_action</code> value listed in the CSV for these two actions is ignored.</p>
+<hr>
+<h2>4. Robot assignment rule</h2>
+<p>When a station needs a robot the engine selects using this priority order:</p>
+<ol>
+<li>Robot must be in Idle state.</li>
+<li>Robot must support the required action.</li>
+<li>Among eligible robots, select the cheapest (lowest <code>cost_dollars</code>) whose <code>ticks_per_action</code> for the station's action is strictly less than <code>target_ticks</code> for the Job. If no eligible robot meets the <code>target_ticks</code> constraint, fall back to the cheapest eligible robot regardless of <code>ticks_per_action</code> (log a <code>target_ticks_fallback</code> warning event at that tick).</li>
+<li>Tiebreak: fewest ticks required for this action.</li>
+<li>Second tiebreak: alphabetical by robot name.</li>
+</ol>
+<hr>
+<h2>5. Simulation execution</h2>
+<pre><code>
+Initialize:
+  All robots: state = Idle, remaining_ticks = 0, current_action = None
+  All stations: state = Idle, part_present = False, locked = False
+  Input Buffer: count = 0
+  Output Buffer: count = 0
+  parts_completed = 0
+  tick = 0
+  job_started = False
+  next_part_id = 1
+  entry_tick = {}  (dict mapping part_id -&gt; tick when it entered first assembly station)
+
+Each tick:
+
+  STEP 1 — Check termination
+    If parts_completed &gt;= parts_to_build
+       AND output_buffer_count == 0
+       AND no deliver robot currently in Working state:
+      log end_simulation(reason=job_complete), stop.
+    If tick &gt;= max_ticks: log end_simulation(reason=max_ticks_reached), stop.
+
+  STEP 2 — Decrement working robots
+    For each robot in Working state:
+      remaining_ticks -= 1
+      If remaining_ticks == 0:
+        If current_action == "fetch parts":
+          Input Buffer count = input_buffer_size  (fill to max)
+          Robot state = Idle
+          Log finish_action
+        Else if current_action == "deliver parts":
+          Robot state = Idle
+          Log finish_action
+          (Output Buffer was already set to 0 in Step 3 when the robot was assigned.
+           Do NOT reset it here — in a multi-job scenario, a subsequent job may have
+           already deposited parts into the Output Buffer during the delivery trip.)
+        Else:  (assembly action)
+          Station where robot was working: state = Idle, locked = False
+          (part remains at station, available to move next tick)
+          Robot state = Idle
+          Log finish_action (include part_id)
+
+  STEP 3 — Deliver check
+    If output_buffer_count &gt;= deliver_trigger_threshold
+       OR (parts_completed &gt;= parts_to_build AND output_buffer_count &gt; 0):
+      (The OR clause is an end-of-job override: when all parts are built but the final
+       batch is smaller than deliver_trigger_threshold, dispatch immediately so the
+       simulation can reach its job_complete termination condition.)
+      If no deliver robot currently working for this line:
+        Find available deliver-capable robot (assignment rule).
+        If found:
+          Log assign_robot
+          Assign robot, state = Working, current_action = "deliver parts"
+          remaining_ticks = ceil(central_store_distance / speed)
+          Output Buffer count = 0  (robot has taken the parts)
+          Log start_action
+
+  STEP 4 — Fetch check
+    If input_buffer_count &lt;= fetch_trigger_threshold:
+      If no fetch robot currently working for this line:
+        Find available fetch-capable robot (assignment rule).
+        If found:
+          Log assign_robot
+          Assign robot, state = Working, current_action = "fetch parts"
+          remaining_ticks = ceil(central_store_distance / speed)
+          Log start_action
+
+  STEP 5 — Move completed parts to Output Buffer
+    Last assembly station: if state = Idle and part_present = True and locked = False
+    and output_buffer_count &lt; output_buffer_size:
+      output_buffer_count += 1
+      cycle_time = tick - entry_tick[current_part_id]
+      Log part_complete (include part_id, cycle_time_ticks = cycle_time)
+      part_present = False
+      parts_completed += 1
+      If parts_completed == parts_to_build: log finish_job
+
+  STEP 6 — Assign robots to assembly stations (reverse order, last to second)
+    For each assembly station from last to second (station-to-station moves only;
+    the first assembly station pulling from the Input Buffer is handled exclusively
+    in Step 7):
+      If state = Idle and no robot assigned:
+        Check if the PREVIOUS assembly station has a completed part available
+        (part_present = True, locked = False, state = Idle).
+        If yes:
+          Find available robot for this station's action (assignment rule).
+          If found:
+            Move part from previous station (part_present = False there,
+              carry forward its part_id).
+            Log assign_robot (include part_id)
+            This station: part_present = True, locked = True, state = Working,
+              current_part_id = carried part_id.
+            Robot: state = Working, current_action = station action,
+              remaining_ticks = robot's ticks for this action.
+            Log start_action (include part_id)
+
+  STEP 7 — Take part from Input Buffer into first assembly station
+    First assembly station only: if state = Idle and no robot assigned
+    and input_buffer_count &gt;= 1:
+      Find available robot for first station's action (assignment rule).
+      If found:
+        input_buffer_count -= 1
+        part_id = next_part_id; next_part_id += 1
+        entry_tick[part_id] = tick
+        Log assign_robot (include part_id)
+        First station: part_present = True, locked = True, state = Working,
+          current_part_id = part_id.
+        Robot: state = Working, current_action = first station's action,
+          remaining_ticks = robot's ticks for this action.
+        If not job_started: log start_job, job_started = True
+        Log start_action (include part_id)
+
+  STEP 8 — Increment tick
+    tick += 1
+</code></pre>
+<hr>
+<h2>6. Logging</h2>
+<p>All events written to <code>/data/runs/&lt;run_id&gt;/run_log.jsonl</code>. One JSON object per line.</p>
+<p><strong>Part tracking:</strong> each part that enters the first assembly station is assigned an auto-incrementing <code>part_id</code> (integer, starting at 1 per job). All log events that involve a specific part include the <code>part_id</code> field. The engine records each part's <code>entry_tick</code> (the tick it entered the first assembly station) to enable per-part cycle time calculation.</p>
+<pre><code>
+{"event": "start_simulation", "tick": 0, "config": {}}
+{"event": "start_job", "tick": 0, "line": 1, "job_name": "Cable Harness Assembly"}
+{"event": "assign_robot", "tick": 0, "line": 1, "station": "Central Store",
+  "robot": "FetchBot1", "action": "fetch parts", "cost_dollars": 50, "ticks_for_action": 5}
+{"event": "start_action", "tick": 0, "line": 1, "station": "Central Store",
+  "robot": "FetchBot1", "action": "fetch parts"}
+{"event": "finish_action", "tick": 5, "line": 1, "station": "Central Store",
+  "robot": "FetchBot1", "action": "fetch parts"}
+{"event": "assign_robot", "tick": 6, "line": 1, "station": "Insert Cable Slot A",
+  "robot": "Assembler1", "action": "insert_cable_slot_a", "cost_dollars": 30,
+  "ticks_for_action": 5, "part_id": 1}
+{"event": "start_action", "tick": 6, "line": 1, "station": "Insert Cable Slot A",
+  "robot": "Assembler1", "action": "insert_cable_slot_a", "part_id": 1}
+{"event": "finish_action", "tick": 11, "line": 1, "station": "Insert Cable Slot A",
+  "robot": "Assembler1", "action": "insert_cable_slot_a", "part_id": 1}
+{"event": "part_complete", "tick": 25, "line": 1, "part_id": 1,
+  "cycle_time_ticks": 19}
+{"event": "finish_job", "tick": 98, "line": 1, "job_name": "Cable Harness Assembly",
+  "parts_completed": 10}
+{"event": "end_simulation", "tick": 98, "reason": "job_complete"}
+</code></pre>
+<p><strong>Optional warning event (logged when no robot meets target_ticks):</strong></p>
+<pre><code>
+{"event": "target_ticks_fallback", "tick": 6, "line": 1,
+  "station": "Insert Cable Slot A", "action": "insert_cable_slot_a",
+  "target_ticks": 13, "selected_robot": "Assembler1", "ticks_for_action": 15}
+</code></pre>
+<p><strong>Notes:</strong></p>
+<ul>
+<li><code>assign_robot</code> is logged immediately before <code>start_action</code> whenever a robot is selected for any station or fetch/deliver task. It captures the assignment decision: which robot was chosen, its cost, and its ticks for the action.</li>
+<li><code>part_complete</code> is logged when a part moves from the last assembly station into the Output Buffer. <code>cycle_time_ticks</code> = current tick minus the tick at which this part entered the first assembly station.</li>
+<li>Fetch/deliver actions do not carry a <code>part_id</code> since they are not associated with a specific part.</li>
+<li>The <code>Central Store</code> label is used in log events for fetch/deliver station references (replaces "Warehouse").</li>
+</ul>
+<hr>
+<h2>7. Analytics</h2>
+<p>Computed from the log after simulation ends. Displayed on the results page.</p>
+<p><strong>Robot Utilization</strong> For each robot: <code>working_ticks / total_ticks * 100</code> <code>working_ticks</code> = number of ticks the robot spent in Working state.</p>
+<p><strong>Average Robot Utilization</strong> Mean of Robot Utilization across all robots in the simulation. Summarizes overall robot fleet productivity in a single number.</p>
+<p><strong>Station Utilization</strong> For each station: <code>working_ticks / total_ticks * 100</code> <code>working_ticks</code> = number of ticks a robot was actively working at that station.</p>
+<p><strong>Average Station Utilization</strong> Mean of Station Utilization across all assembly stations (excluding Input Buffer and Output Buffer, which are storage, not processing stations). Summarizes overall line throughput efficiency in a single number.</p>
+<p><strong>Job Summary</strong></p>
+<ul>
+<li><strong>Parts Completed:</strong> total parts that reached the Output Buffer.</li>
+<li><strong>Average Part Cycle Time (ticks):</strong> Mean of <code>cycle_time_ticks</code> across all <code>part_complete</code> events. Measures only the time a part is actively in the production flow — from first touch at Station 1 to exit into the Output Buffer. Excludes any waiting time before a part enters the line.</li>
+<li><strong>Average Full Cycle Time (ticks):</strong> <code>Average Part Cycle Time + avg fetch duration + avg deliver duration</code>, computed from actual log event timestamps. Represents the true end-to-end time per part including transport — the number a plant manager compares against a customer lead-time commitment.</li>
+<li><strong>Average Non-Value-Added Time (ticks):</strong> <code>Average Full Cycle Time − Average Part Cycle Time</code>. The per-part transport and waiting time that consumed clock time without adding value. A key component of OEE Availability loss.</li>
+<li><strong>Target Ticks:</strong> The job's configured goal, shown for reference alongside the measured averages.</li>
+<li><strong>Total Ticks Elapsed:</strong> The tick at which the simulation ended.</li>
+</ul>
+<p>Display all as clean HTML tables.</p>
+<hr>
+<h2>8. Visualization (static, shown after simulation completes)</h2>
+<pre><code>
+[ CENTRAL STORE ]
+       |
+[ Input Buffer ] -- [ Station 1 ] -- [ Station 2 ] -- [ ... ] -- [ Output Buffer ]
+
+Robots not at a station shown below the line in a row.
+</code></pre>
+<p><strong>Buffer colors:</strong></p>
+<ul>
+<li>Input Buffer: red if empty, yellow if 1-2 parts, green if &gt;= 3 parts</li>
+<li>Output Buffer: red if full, yellow if 1-2 spaces remaining, green if &gt;= 3 spaces remaining</li>
+</ul>
+<p><strong>Robot boxes:</strong></p>
+<ul>
+<li>Each robot type has a distinct CSS border style (solid / dashed / dotted / double — one style per type, up to four types supported)</li>
+<li>Green if robot was in Working state at end of simulation; red if Idle</li>
+<li>Labeled with robot name</li>
+</ul>
+<p><strong>Station boxes:</strong></p>
+<ul>
+<li>Green if a robot was working there at simulation end; red otherwise</li>
+<li>Show robot name inside box if one was assigned at end</li>
+</ul>
+<p><strong>Parts:</strong></p>
+<ul>
+<li>Each station shows a small cable symbol (Unicode: ⊟ or similar) if a part is present at that station at end of simulation</li>
+</ul>
+<hr>
+<h2>9. Web application</h2>
+<h3>9.1 Authentication</h3>
+<p>HTTP Basic Auth on all routes. Read credentials from environment variables:</p>
+<pre><code>
+ADMIN_USERNAME
+ADMIN_PASSWORD
+DEMO_USERNAME
+DEMO_PASSWORD
+</code></pre>
+<p>Store in <code>.env</code> locally. Load with python-dotenv. The admin role is identified when the authenticated username matches <code>ADMIN_USERNAME</code>.</p>
+<p><strong>In v1, admin and demo users have identical capabilities except one: only the admin user sees the 🗑 delete icon next to past runs.</strong> All other features (upload, run, view results, download CSV, download event log) are available to both roles. This separation exists to support future permission differentiation without a code change.</p>
+<h3>9.2 Routes</h3>
+<pre><code>
+GET  /                         Home page: past runs list + upload form
+GET  /download/template/csv    Download sample_config.csv
+POST /run/new                  Upload CSV, validate, run simulation, redirect to results
+GET  /run/&lt;run_id&gt;             Results: visualization + analytics + log
+GET  /run/&lt;run_id&gt;/log         Download run_log.jsonl for this run
+DELETE /run/&lt;run_id&gt;           Admin only: delete run folder, called via JS fetch
+</code></pre>
+<h3>9.3 Home page</h3>
+<ul>
+<li>Title: "Back-End Assembly Line Simulator"</li>
+<li>Section: "New Simulation Run" with a single file input for CSV upload and a "Run Simulation" button</li>
+<li>Link: "Download CSV Template"</li>
+<li>Table of past runs: Run Name + Description | Start Time | Parts Completed | Total Ticks | Status Sorted by start time descending. Each row shows the run name in bold on the first line and the description in smaller text on the second line (truncated to ~120 characters with ellipsis if longer; full text is shown on the results page).</li>
+<li>Admin users only: each run row includes a 🗑 icon on the right. Clicking it calls DELETE /run/&lt;run_id&gt; via fetch and removes that row from the DOM on success. The icon is not rendered at all for demo users.</li>
+</ul>
+<h3>9.4 Results page</h3>
+<p>Sections in order:</p>
+<ol>
+<li>Run name, full description, timestamp, status badge</li>
+<li>Configuration: Distance from Central Store, Robot Type Specifications table (type, cost/unit, speed, operations), Robot Fleet table (type, count)</li>
+<li>Job summary (parts completed, avg part cycle time, avg full cycle time, avg non-value-added time, target ticks, total ticks)</li>
+<li>Visualization grid</li>
+<li>Robot utilization table</li>
+<li>Station utilization table</li>
+<li>Event log (scrollable table: Tick | Event | Station | Robot | Action | Part ID)</li>
+<li>Link: Download Event Log (downloads run_log.jsonl)</li>
+<li>Link: Download CSV used for this run</li>
+<li>Link: Back to home</li>
+</ol>
+<h3>9.5 Run storage</h3>
+<pre><code>
+/data/runs/&lt;run_id&gt;/     (run_id = YYYYMMDD_HHMMSS_&lt;6-char random&gt;)
+  config.csv
+  run_log.jsonl
+  results.json           (pre-computed analytics)
+  meta.json              (run name, description, start time, status, parts_completed, total_ticks)
+</code></pre>
+<hr>
+<h2>10. Project Setup (Do This Before Claude Code Starts Building)</h2>
+<p>These are the one-time steps to create the GitHub repository and local project directory. Claude Code will handle creating all project files once these are in place.</p>
+<h3>10.1 Create the GitHub repository</h3>
+<ol>
+<li>Go to <strong>https://github.com/new</strong></li>
+<li>Fill in:</li>
+<li>Owner: <code>ekrock</code></li>
+<li>Repository name: <code>back-end-simulation</code></li>
+<li>Visibility: <strong>Public</strong></li>
+<li>Do NOT check "Add a README file", "Add .gitignore", or "Choose a license"</li>
+<li>Click <strong>Create repository</strong></li>
+<li>GitHub will show you the empty repo page. Leave it open — you'll need the SSH URL.</li>
+</ol>
+<h3>10.2 Create the local project directory</h3>
+<p>On your Mac terminal (each command on its own line):</p>
+<pre><code>
+mkdir ~/back-end-simulation
+cd ~/back-end-simulation
+git init
+git remote add origin git@github.com:ekrock/back-end-simulation.git
+</code></pre>
+<p>Verify SSH access to GitHub:</p>
+<pre><code>
+ssh -T git@github.com
+</code></pre>
+<p>Expected response: <code>Hi ekrock! You've successfully authenticated...</code> If this fails, your SSH key is not added to GitHub — go to GitHub → Settings → SSH and GPG keys → New SSH key and add <code>~/.ssh/id_rsa.pub</code> (or <code>id_ed25519.pub</code>).</p>
+<h3>10.3 What Claude Code will set up automatically</h3>
+<p>Once you give the go-ahead to build, Claude Code will:</p>
+<ul>
+<li>Create the full project file structure (see Section 12)</li>
+<li>Create <code>.claude/settings.json</code> with a read-only command allowlist to reduce permission prompts</li>
+<li>Create <code>~/.claude/projects/-Users-eric-back-end-simulation/memory/</code> and seed it with project-relevant memory entries (EC2 deploy mechanics, doc conventions, etc.)</li>
+<li>Create <code>.gitignore</code> covering <code>__pycache__/</code>, <code>*.pyc</code>, <code>.env</code>, <code>data/runs/</code></li>
+<li>Make an initial commit and push to <code>ekrock/back-end-simulation</code></li>
+</ul>
+<hr>
+<h2>11. AWS EC2 Deployment (Do These Steps While Claude Code Builds)</h2>
+<p><strong>Do the steps in this section in parallel while Claude Code is building the app.</strong> All of these require your manual action in the AWS Console and your domain registrar. The domain <code>backendsim.com</code> is already registered — skip any "register domain" step.</p>
+<h3>11.1 Launch the EC2 instance</h3>
+<ol>
+<li>Sign in to the AWS Console: <strong>https://console.aws.amazon.com</strong></li>
+<li>In the top search bar, type <strong>EC2</strong> and click EC2 under Services.</li>
+<li>Click <strong>Launch instance</strong> (orange button).</li>
+<li>Under <strong>Name and tags</strong>, enter: <code>back-end-simulation</code></li>
+<li>Under <strong>Application and OS Images</strong>, click <strong>Ubuntu</strong>, then select: <strong>Ubuntu Server 24.04 LTS (HVM), SSD Volume Type</strong> — 64-bit (x86)</li>
+<li>Under <strong>Instance type</strong>, select: <strong>t3.small</strong></li>
+<li>Under <strong>Key pair (login)</strong>, click <strong>Create new key pair</strong>:</li>
+<li>Key pair name: <code>back-end-sim</code></li>
+<li>Key pair type: RSA</li>
+<li>Private key file format: <code>.pem</code></li>
+<li>Click <strong>Create key pair</strong> — <code>back-end-sim.pem</code> downloads to your Downloads folder</li>
+<li>Move and secure the key file (on your Mac terminal):</li>
+</ol>
+<pre><code>
+mv ~/Downloads/back-end-sim.pem ~/.ssh/back-end-sim.pem
+chmod 400 ~/.ssh/back-end-sim.pem
+</code></pre>
+<ol>
+<li>Under <strong>Network settings</strong>, click <strong>Edit</strong>, then:</li>
+<li>Auto-assign public IP: <strong>Enable</strong></li>
+<li>Click <strong>Create security group</strong>, name it <code>back-end-simulation-sg</code></li>
+<li>Rule 1 (already present): SSH — Port 22 — Source: <strong>My IP</strong></li>
+<li>Click <strong>Add security group rule</strong>: Type: HTTP — Port 80 — Source: <strong>Anywhere (0.0.0.0/0)</strong></li>
+<li>Click <strong>Add security group rule</strong>: Type: HTTPS — Port 443 — Source: <strong>Anywhere (0.0.0.0/0)</strong></li>
+<li>Under <strong>Configure storage</strong>, leave the default (8 GiB gp3).</li>
+<li>Click <strong>Launch instance</strong>.</li>
+<li>Click the instance ID link in the confirmation banner.</li>
+<li>Wait until the <strong>Instance state</strong> column shows <strong>Running</strong> (usually 30–60 seconds).</li>
+<li>In the instance details panel, copy and save the <strong>Public IPv4 address</strong> (looks like <code>54.xxx.xxx.xxx</code>). You will need it for the next two steps.</li>
+</ol>
+<h3>11.2 Configure SSH on your Mac</h3>
+<p>Open <code>~/.ssh/config</code> in any text editor and add these lines at the bottom (replace <code>&lt;EC2_PUBLIC_IP&gt;</code> with the IP you copied in step 14):</p>
+<pre><code>
+Host back-end-sim-ec2
+  HostName &lt;EC2_PUBLIC_IP&gt;
+  User ubuntu
+  IdentityFile ~/.ssh/back-end-sim.pem
+</code></pre>
+<p>Save the file, then test the connection:</p>
+<pre><code>
+ssh back-end-sim-ec2
+</code></pre>
+<p>You should see an Ubuntu welcome banner. Type <code>exit</code> to disconnect.</p>
+<h3>11.3 Point backendsim.com DNS to the EC2 instance</h3>
+<ol>
+<li>Log in to the registrar where you bought <code>backendsim.com</code>.</li>
+<li>Navigate to DNS management for <code>backendsim.com</code>.</li>
+<li>Add an <strong>A record</strong>:</li>
+<li>Host / Name: <code>@</code></li>
+<li>Value / Points to: <code>&lt;EC2_PUBLIC_IP&gt;</code> (same IP from step 14)</li>
+<li>TTL: <code>300</code></li>
+<li>Save the record.</li>
+<li>Wait 5–15 minutes, then verify propagation on your Mac:</li>
+</ol>
+<pre><code>
+dig backendsim.com +short
+</code></pre>
+<p>This should return your EC2 IP address.</p>
+<h3>11.4 Deploy the application (after Claude Code finishes building)</h3>
+<p>Once the code is built and pushed to GitHub, SSH into the instance and run:</p>
+<pre><code>
+ssh back-end-sim-ec2
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/ekrock/back-end-simulation/main/deploy/setup.sh)"
+</code></pre>
+<p>Then edit credentials:</p>
+<pre><code>
+nano /home/ubuntu/back-end-simulation/.env
+</code></pre>
+<p>Start the service:</p>
+<pre><code>
+sudo systemctl start back-end-simulation
+</code></pre>
+<p>Enable HTTPS:</p>
+<pre><code>
+bash /home/ubuntu/back-end-simulation/deploy/setup-https.sh backendsim.com
+</code></pre>
+<p>Verify: open <strong>https://backendsim.com</strong> in your browser.</p>
+<h3>11.5 nginx configs</h3>
+<p><strong>Claude Code must create two nginx config files:</strong></p>
+<p><code>deploy/nginx-http.conf</code> — used during initial setup before HTTPS:</p>
+<pre><code>
+server {
+    listen 80;
+    server_name _;
+    location / {
+        proxy_pass http://127.0.0.1:5000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+}
+</code></pre>
+<p><code>deploy/nginx-https.conf</code> — reference only (Certbot generates the real one):</p>
+<pre><code>
+server {
+    listen 443 ssl;
+    server_name backendsim.com;
+    # SSL managed by Certbot
+    location / {
+        proxy_pass http://127.0.0.1:5000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-Proto https;
+    }
+}
+server {
+    listen 80;
+    server_name backendsim.com;
+    return 301 https://$host$request_uri;
+}
+</code></pre>
+<h3>11.6 Other files Claude Code must create</h3>
+<p><code>deploy/back-end-simulation.service</code>: systemd unit running gunicorn on 127.0.0.1:5000</p>
+<p><code>.env.example</code>:</p>
+<pre><code>
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD=changeme
+DEMO_USERNAME=demo
+DEMO_PASSWORD=changeme
+</code></pre>
+<p><code>README.md</code>: covers local run, project setup (Section 10), EC2 provisioning, DNS setup, setup.sh, HTTPS setup, and how to use the app.</p>
+<hr>
+<h2>12. Sample configuration and scenario files</h2>
+<h3>12.1 sample_config.csv</h3>
+<p><code>static/sample_config.csv</code> — a three-station PCB assembly line with a single-AMR bottleneck, pre-filled and ready to upload:</p>
+<pre><code>
+[SIMULATION]
+name,PCB Assembly — Single AMR Baseline
+description,Three-station PCB assembly line with two Stationary Assemblers and one
+Dexterous Robotic Arm. A single AMR shuttles parts to and from Central Store 60 m
+away (60 ticks at 1 m/s; each tick = 1 second). With buffer size 10 and the line
+consuming one part every ~10 ticks, the AMR cannot fetch and deliver simultaneously
+— the line stalls periodically. Vary the AMR count to 2 and compare throughput.
+max_ticks,3000
+
+[JOB]
+name,PCB Assembly
+parts_to_build,50
+target_ticks,12
+
+[LINE]
+input_buffer_size,10
+output_buffer_size,10
+central_store_distance_meters,60
+fetch_trigger_threshold,0
+deliver_trigger_threshold,10
+
+[STATIONS]
+station_name,action_name
+Component Placement,component_placement
+Solder Reflow,solder_reflow
+Quality Inspection,quality_inspection
+
+[ROBOT_TYPES]
+AMR,1.0,40000
+fetch parts,60,deliver parts,60
+Stationary Assembler,,25000
+component_placement,10,solder_reflow,10,quality_inspection,15
+Dexterous Robotic Arm,,80000
+component_placement,7,solder_reflow,7,quality_inspection,9
+
+[ROBOTS]
+type_name,count
+AMR,1
+Stationary Assembler,2
+Dexterous Robotic Arm,1
+</code></pre>
+<p><strong>Sample config notes:</strong></p>
+<ul>
+<li>Each tick = 1 second. The AMR travels at 1.0 m/s; fetch or deliver = 60 ticks.</li>
+<li><code>target_ticks = 12</code> is the Dexterous Arm's best-station time (9 ticks for Quality Inspection). The Stationary Assembler exceeds target at Quality Inspection (15 ticks), so the assignment rule routes the Arm there automatically.</li>
+<li>AMR <code>ticks_per_action</code> values in the CSV are ignored; actual duration = ceil(60 m / 1.0 m/s) = 60 ticks each way.</li>
+<li>With a single AMR the output buffer fills before the AMR returns from delivery, causing periodic line stalls. Adding a second AMR resolves the fetch/deliver conflict.</li>
+</ul>
+<h3>12.2 Scenario files (Final Assembly, Test &amp; Pack)</h3>
+<p>Five additional CSV files in <code>static/</code> walk through a progressive case study on a Final Assembly / Functional Test / Pack &amp; Label line. Each tick = 1 second. Central Store distance = 100 m (100-tick round trip at 1.0 m/s). Target = 18 ticks.</p>
+<p>Robot operation times:</p>
+<ul>
+<li>Stationary Assembler ($25,000): Final Assembly 12 ticks ✓, Functional Test 25 ticks ✗, Pack &amp; Label 8 ticks ✓</li>
+<li>Dexterous Robotic Arm ($80,000): Final Assembly 8 ticks ✓, Functional Test 14 ticks ✓, Pack &amp; Label 6 ticks ✓</li>
+</ul>
+<p>Assignment rule routes the Arm to Functional Test (only robot under 18 ticks there); Assembler(s) handle Final Assembly and Pack &amp; Label.</p>
+<table><thead><tr><th>File</th><th>Case</th><th>Robots</th><th>Total Ticks</th></tr></thead><tbody><tr><td>config_01_hello_world.csv</td><td>Hello World — 1 part</td><td>1 AMR, 1 Assembler</td><td>302</td></tr><tr><td>config_02_single_assembler.csv</td><td>20 parts, same config</td><td>1 AMR, 1 Assembler</td><td>1325</td></tr><tr><td>config_03_add_dexterous_arm.csv</td><td>Add Dexterous Arm</td><td>1 AMR, 1 Assembler, 1 Arm</td><td>970</td></tr><tr><td>config_04_two_assemblers_one_amr.csv</td><td>Full pipeline, 1 AMR</td><td>1 AMR, 2 Assemblers, 1 Arm</td><td>911</td></tr><tr><td>config_05_two_assemblers_two_amrs.csv</td><td>Full pipeline, 2 AMRs</td><td>2 AMRs, 2 Assemblers, 1 Arm</td><td>757</td></tr></tbody></table>
+<p>Case 4 → Case 5: adding a second AMR saves 154 ticks (17% faster) by allowing simultaneous fetch and deliver trips.</p>
+<hr>
+<h2>13. File structure</h2>
+<pre><code>
+back-end-simulation/
+  app.py                   # Flask app, routes, auth
+  simulation/
+    __init__.py
+    engine.py              # Tick-based simulation engine (pure Python)
+    robot.py               # Robot and RobotType classes
+    station.py             # Station class
+    line.py                # Line class (buffers, stations, job tracking)
+    csv_parser.py          # CSV config parser -&gt; SimConfig dataclass
+    analytics.py           # Post-run analytics from log
+    logger.py              # Structured JSONL event logger
+  templates/
+    base.html              # Base template (auth header, nav)
+    index.html             # Home page
+    results.html           # Results page
+  static/
+    style.css
+    sample_config.csv
+    config_01_hello_world.csv
+    config_02_single_assembler.csv
+    config_03_add_dexterous_arm.csv
+    config_04_two_assemblers_one_amr.csv
+    config_05_two_assemblers_two_amrs.csv
+  data/
+    runs/                  # Created at runtime; add to .gitignore
+  deploy/
+    setup.sh               # Initial EC2 setup (app + nginx HTTP)
+    setup-https.sh         # Let's Encrypt / Certbot HTTPS setup
+    back-end-simulation.service   # systemd unit for gunicorn
+    nginx-http.conf        # nginx config (HTTP only, used before HTTPS)
+    nginx-https.conf       # nginx reference config (target state after Certbot)
+  .env.example
+  requirements.txt         # flask gunicorn python-dotenv
+  README.md
+</code></pre>
+<hr>
+<h2>14. Phase 2 features (not in v1)</h2>
+<ul>
+<li>Behavior Trees (Groot2 XML upload, py_trees execution) — the fetch/deliver threshold rule in v1 demonstrates the same concept more simply; BTs are the natural next step</li>
+<li>Multi-line support</li>
+<li>Cost vs. cycle time scatter chart aggregated across past runs</li>
+<li>Robot sharing across lines</li>
+<li>Live tick-by-tick visualization via WebSockets</li>
+<li>Clone past run (copy CSV as starting point for new run)</li>
+<li>AWS Secrets Manager (replace env var auth)</li>
+<li>Per-station target cycle time constraint on robot selection</li>
+</ul>
+<hr>
+<h2>15. Definition of done for Saturday</h2>
+<ul>
+<li>[x] <code>sample_config.csv</code> uploads and simulation runs to completion without errors</li>
+<li>[x] Results page shows Configuration section, visualization, analytics tables, and log table</li>
+<li>[x] Robot utilization and station utilization values are non-zero and plausible</li>
+<li>[x] Average Part Cycle Time, Average Full Cycle Time, and Average Non-Value-Added Time are displayed and numerically consistent</li>
+<li>[x] Past runs list on home page shows completed run</li>
+<li>[x] Demo credentials allow access; admin credentials show delete icon</li>
+<li>[x] App is running on EC2 with HTTPS (no browser security warnings)</li>
+<li>[x] Visiting <code>http://backendsim.com</code> redirects to <code>https://backendsim.com</code></li>
+<li>[x] README explains how to deploy and use the app</li>
+<li>[x] All five scenario CSV files load and produce expected results</li>
+<li>[x] https://backendsim.com is live and publicly accessible</li>
+</ul>
+<script>
+(function () {
+  document.querySelectorAll('pre').forEach(function (pre) {
+    if (pre.parentElement && pre.parentElement.classList.contains('copy-wrap')) return;
+    var wrap = document.createElement('div');
+    wrap.className = 'copy-wrap';
+    pre.parentNode.insertBefore(wrap, pre);
+    wrap.appendChild(pre);
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'copy-btn';
+    btn.textContent = 'Copy';
+    btn.setAttribute('aria-label', 'Copy code to clipboard');
+    btn.addEventListener('click', function () {
+      var text = pre.innerText.replace(/^\s+|\s+$/g, '');
+      var done = function () {
+        btn.textContent = 'Copied';
+        btn.classList.add('copied');
+        setTimeout(function () {
+          btn.textContent = 'Copy';
+          btn.classList.remove('copied');
+        }, 1500);
+      };
+      var fail = function () {
+        btn.textContent = 'Select manually';
+        btn.classList.add('failed');
+        setTimeout(function () {
+          btn.textContent = 'Copy';
+          btn.classList.remove('failed');
+        }, 2500);
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(done, fail);
+      } else {
+        try {
+          var ta = document.createElement('textarea');
+          ta.value = text;
+          ta.setAttribute('readonly', '');
+          ta.style.position = 'absolute';
+          ta.style.left = '-9999px';
+          document.body.appendChild(ta);
+          ta.select();
+          var ok = document.execCommand('copy');
+          document.body.removeChild(ta);
+          ok ? done() : fail();
+        } catch (e) { fail(); }
+      }
+    });
+    wrap.appendChild(btn);
+  });
+})();
+</script>
+</body></html>
