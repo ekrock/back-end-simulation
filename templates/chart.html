@@ -71,8 +71,9 @@
           legend: { display: false },
           tooltip: {
             callbacks: {
-              title: function(items) {
-                return items.map(function(i) { return i.raw.meta.label; });
+              title: function() { return null; },
+              beforeLabel: function(item) {
+                return item.raw.meta.label;
               },
               label: function(item) {
                 var d = item.raw;
