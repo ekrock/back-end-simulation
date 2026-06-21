@@ -1,0 +1,33 @@
+[SIMULATION]
+name,Case 2 — Single Assembler, 20 Parts
+description,Same robot configuration as Hello World scaled to 20 parts. With one robot handling all three stations in sequence there is no pipelining — each part must clear all stations before the next can begin. Use this as the throughput baseline before adding a Dexterous Robotic Arm in Case 3.
+max_ticks,3000
+
+[JOB]
+name,Final Assembly
+parts_to_build,20
+target_ticks,18
+
+[LINE]
+input_buffer_size,5
+output_buffer_size,5
+central_store_distance_meters,100
+fetch_trigger_threshold,0
+deliver_trigger_threshold,5
+
+[STATIONS]
+station_name,action_name
+Final Assembly,final_assembly
+Functional Test,functional_test
+Pack & Label,pack_and_label
+
+[ROBOT_TYPES]
+AMR,1.0,40000
+fetch parts,60,deliver parts,60
+Stationary Assembler,,25000
+final_assembly,12,functional_test,25,pack_and_label,8
+
+[ROBOTS]
+type_name,count
+AMR,1
+Stationary Assembler,1

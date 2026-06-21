@@ -161,6 +161,20 @@ def new_run(username: str):
         "total_ticks": sim_result["total_ticks"],
         "termination_reason": sim_result["termination_reason"],
         "target_ticks": config.job.target_ticks,
+        "central_store_distance_meters": config.line.central_store_distance_meters,
+        "robot_types": [
+            {
+                "type_name": rt.type_name,
+                "cost_dollars": rt.cost_dollars,
+                "speed": rt.speed_meters_per_tick,
+                "actions": rt.actions,
+            }
+            for rt in config.robot_types
+        ],
+        "robot_counts": [
+            {"type_name": rc.type_name, "count": rc.count}
+            for rc in config.robot_counts
+        ],
     }
     with open(os.path.join(run_path, "meta.json"), "w") as f:
         json.dump(meta, f, indent=2)

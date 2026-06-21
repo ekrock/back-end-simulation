@@ -216,6 +216,7 @@ def run_simulation(config: SimConfig, log_path: str) -> dict:
         if stations:
             first = stations[0]
             if (first.state == "Idle" and not first.current_robot
+                    and not first.part_present
                     and line.input_buffer_count >= 1
                     and line.parts_started < config.job.parts_to_build):
                 robot = _select_robot(robots, first.action_name, target_ticks)

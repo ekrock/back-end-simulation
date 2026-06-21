@@ -21,7 +21,52 @@
   </p>
 </section>
 
-{# ── 2. Job summary ── #}
+{# ── 2. Configuration ── #}
+{% if meta.robot_types is defined %}
+<section class="card">
+  <h3>Configuration</h3>
+  <table class="ml-table summary-table" style="margin-bottom:14px">
+    <tbody>
+      <tr><td>Distance from Central Store to Line</td><td class="num">{{ meta.central_store_distance_meters }} m</td></tr>
+    </tbody>
+  </table>
+
+  <p style="font-weight:600;margin-bottom:8px">Robot Type Specifications</p>
+  <table class="ml-table" style="margin-bottom:14px">
+    <thead><tr><th>Type</th><th>Cost/unit</th><th>Speed</th><th>Operations</th></tr></thead>
+    <tbody>
+    {% for rt in meta.robot_types %}
+      <tr>
+        <td>{{ rt.type_name }}</td>
+        <td class="num">${{ "{:,}".format(rt.cost_dollars) }}</td>
+        <td class="num">{% if rt.speed %}{{ rt.speed }} m/s{% else %}—{% endif %}</td>
+        <td>
+          {% if rt.speed %}
+            Fetch &amp; deliver parts
+          {% else %}
+            {% for action, ticks in rt.actions.items() %}
+              {{ action | replace("_", " ") }}:&nbsp;{{ ticks }}&nbsp;ticks{% if not loop.last %}&ensp;·&ensp;{% endif %}
+            {% endfor %}
+          {% endif %}
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+
+  <p style="font-weight:600;margin-bottom:8px">Robot Fleet</p>
+  <table class="ml-table">
+    <thead><tr><th>Type</th><th>Count</th></tr></thead>
+    <tbody>
+    {% for rc in meta.robot_counts %}
+      <tr><td>{{ rc.type_name }}</td><td class="num">{{ rc.count }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endif %}
+
+{# ── 3. Job summary ── #}
 <section class="card">
   <h3>Job Summary</h3>
   <table class="ml-table summary-table">

@@ -1,0 +1,36 @@
+[SIMULATION]
+name,Case 3 — Add Dexterous Arm to Functional Test
+description,Adds a Dexterous Robotic Arm to handle Functional Test — the precision station where the Stationary Assembler (25 ticks) exceeds the 18-tick target and the Arm (14 ticks) does not. The assignment rule automatically routes the Arm to that station. The Assembler handles Final Assembly and Pack & Label; the Arm handles Functional Test. Compare Part Cycle Time and throughput against Case 2.
+max_ticks,3000
+
+[JOB]
+name,Final Assembly
+parts_to_build,20
+target_ticks,18
+
+[LINE]
+input_buffer_size,5
+output_buffer_size,5
+central_store_distance_meters,100
+fetch_trigger_threshold,0
+deliver_trigger_threshold,5
+
+[STATIONS]
+station_name,action_name
+Final Assembly,final_assembly
+Functional Test,functional_test
+Pack & Label,pack_and_label
+
+[ROBOT_TYPES]
+AMR,1.0,40000
+fetch parts,60,deliver parts,60
+Stationary Assembler,,25000
+final_assembly,12,functional_test,25,pack_and_label,8
+Dexterous Robotic Arm,,80000
+final_assembly,8,functional_test,14,pack_and_label,6
+
+[ROBOTS]
+type_name,count
+AMR,1
+Stationary Assembler,1
+Dexterous Robotic Arm,1

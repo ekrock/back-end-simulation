@@ -1,0 +1,33 @@
+[SIMULATION]
+name,Hello World — Single Part
+description,Simplest possible run: one AMR, one Stationary Assembler, one part. The AMR fetches the part from Central Store 60 m away, the Assembler processes all three stations in sequence, then the AMR delivers the finished part back. No pipelining, no robot contention — just the bare end-to-end flow.
+max_ticks,500
+
+[JOB]
+name,Final Assembly
+parts_to_build,1
+target_ticks,18
+
+[LINE]
+input_buffer_size,1
+output_buffer_size,1
+central_store_distance_meters,100
+fetch_trigger_threshold,0
+deliver_trigger_threshold,1
+
+[STATIONS]
+station_name,action_name
+Final Assembly,final_assembly
+Functional Test,functional_test
+Pack & Label,pack_and_label
+
+[ROBOT_TYPES]
+AMR,1.0,40000
+fetch parts,60,deliver parts,60
+Stationary Assembler,,25000
+final_assembly,12,functional_test,25,pack_and_label,8
+
+[ROBOTS]
+type_name,count
+AMR,1
+Stationary Assembler,1
