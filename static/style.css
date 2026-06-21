@@ -112,6 +112,7 @@ body {
 .ml-table tr:hover td { background: #f8fafc; }
 
 .num  { text-align: right; font-variant-numeric: tabular-nums; }
+.ml-table th.num { text-align: right; }
 .mono { font-family: "Menlo", "Consolas", monospace; font-size: 13px; }
 
 /* ── Run list ─────────────────────────────────────────────────────────────── */
