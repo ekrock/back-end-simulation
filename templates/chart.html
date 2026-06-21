@@ -51,7 +51,7 @@
 
   function makeChart(canvasId, pts, yKey, yLabel) {
     var ctx = document.getElementById(canvasId).getContext('2d');
-    var data = pts.map(function(p) { return { x: p.fleet_cost, y: p[yKey], meta: p }; });
+    var data = pts.map(function(p) { return { x: p.x, y: p[yKey], meta: p }; });
     return new Chart(ctx, {
       type: 'scatter',
       data: {
