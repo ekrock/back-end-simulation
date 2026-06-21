@@ -72,7 +72,7 @@
           tooltip: {
             callbacks: {
               title: function(items) {
-                return items[0].raw.meta.label;
+                return items.map(function(i) { return i.raw.meta.label; });
               },
               label: function(item) {
                 var d = item.raw;
