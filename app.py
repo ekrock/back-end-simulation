@@ -160,6 +160,7 @@ def new_run(username: str):
         "parts_completed": sim_result["parts_completed"],
         "total_ticks": sim_result["total_ticks"],
         "termination_reason": sim_result["termination_reason"],
+        "target_ticks": config.job.target_ticks,
     }
     with open(os.path.join(run_path, "meta.json"), "w") as f:
         json.dump(meta, f, indent=2)

@@ -28,7 +28,7 @@
     <tbody>
       <tr><td>Parts Completed</td><td class="num">{{ results.parts_completed }}</td></tr>
       <tr><td>Total Ticks Elapsed</td><td class="num">{{ results.total_ticks }}</td></tr>
-      <tr><td>Target Ticks (goal)</td><td class="num">—</td></tr>
+      <tr><td>Target Ticks (goal)</td><td class="num">{% if meta.target_ticks %}{{ meta.target_ticks }}{% else %}—{% endif %}</td></tr>
       <tr><td>Avg Part Cycle Time</td>
           <td class="num">{% if results.avg_part_cycle_time is not none %}{{ results.avg_part_cycle_time }} ticks{% else %}N/A{% endif %}</td></tr>
       <tr><td>Avg Full Cycle Time</td>
