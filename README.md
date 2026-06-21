@@ -33,6 +33,11 @@ See `static/sample_config.csv` for a working example. Sections:
 - `[ROBOT_TYPES]` — two lines per type: `type_name,speed,cost` then `action:ticks,...`
 - `[ROBOTS]` — `type_name,count`
 
+## Project Documentation
+
+- [PRD.md](docs/PRD.md) — product requirements and build notes
+- [Cases_2-5_Analysis.md](docs/Cases_2-5_Analysis.md) — cable assembly performance analysis across the five scenario cases
+
 ## Architecture
 
 ```

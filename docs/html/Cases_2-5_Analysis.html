@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cable Back-End Assembly — Cases 2–5 Performance Analysis — Back-End Simulation docs</title>
+<style>
+body {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 24px 28px 80px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  line-height: 1.55;
+  color: #1c2233;
+  background: #ffffff;
+}
+h1, h2, h3, h4 { line-height: 1.25; margin-top: 1.6em; color: #1c2233; }
+h1 { font-size: 28px; border-bottom: 2px solid #d0d4dc; padding-bottom: 8px; }
+h2 { font-size: 22px; border-bottom: 1px solid #e4e7ec; padding-bottom: 4px; margin-top: 2em; }
+h3 { font-size: 18px; }
+h4 { font-size: 15px; color: #4a5568; }
+p { margin: 0.8em 0; }
+a { color: #1d4ed8; text-decoration: none; }
+a:hover { text-decoration: underline; }
+code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  background: #f4f5f7; padding: 1px 5px; border-radius: 3px; font-size: 0.92em;
+  color: #1c2233; border: 1px solid #e4e7ec;
+}
+pre {
+  background: #f7f8fa; color: #1c2233; padding: 12px 16px; border-radius: 6px;
+  overflow-x: auto; font-size: 13px; line-height: 1.5;
+  border: 1px solid #d0d4dc;
+}
+pre code { background: transparent; padding: 0; color: inherit; border: none; }
+.copy-wrap { position: relative; margin: 1em 0; }
+.copy-btn {
+  position: absolute; top: 6px; right: 8px;
+  background: #ffffff; color: #1c2233;
+  border: 1px solid #374151; border-radius: 4px;
+  font-family: inherit; font-size: 12px; font-weight: 600;
+  padding: 4px 10px; cursor: pointer; opacity: 0.85;
+  transition: opacity 0.15s, background 0.15s, color 0.15s;
+}
+.copy-btn:hover { opacity: 1; background: #f0f4ff; }
+.copy-btn.copied { background: #1d4ed8; color: #ffffff; border-color: #1d4ed8; }
+.copy-btn.failed { background: #fee2e2; color: #7f1d1d; border-color: #7f1d1d; }
+.copy-wrap pre { margin: 0; padding-right: 84px; }
+@media print {
+  .copy-btn { display: none; }
+  .copy-wrap pre { padding-right: 16px; }
+}
+blockquote {
+  margin: 1em 0; padding: 8px 16px; background: #eff6ff;
+  border-left: 4px solid #1d4ed8; color: #1e3a5f;
+}
+table { border-collapse: collapse; margin: 1em 0; width: 100%; }
+th, td { border: 1px solid #d0d4dc; padding: 6px 10px; text-align: left; }
+th { background: #eef0f4; font-weight: 700; color: #1c2233; }
+tr:nth-child(even) td { background: #f7f8fa; }
+ul, ol { padding-left: 1.6em; margin: 0.6em 0; }
+li { margin: 0.2em 0; }
+hr { border: none; border-top: 1px solid #d0d4dc; margin: 2em 0; }
+.doc-header {
+  display: flex; justify-content: space-between; align-items: baseline;
+  font-size: 12px; color: #6b7280; padding-bottom: 12px;
+  border-bottom: 1px solid #e4e7ec; margin-bottom: 12px;
+}
+.doc-header a { color: #6b7280; }
+.doc-header a:hover { color: #1d4ed8; }
+@media print {
+  body { padding: 12px 12px 60px; }
+  .doc-header { display: none; }
+  pre, code { background: #ffffff !important; border-color: #6b7280 !important; }
+  th { background: #ffffff !important; border-color: #1c2233 !important; }
+  tr:nth-child(even) td { background: #ffffff !important; }
+  a { color: #1c2233; text-decoration: underline; }
+}
+</style>
+</head>
+<body>
+<div class="doc-header">
+  <span><a href="index.html">← Index</a></span>
+  <span>Generated from <code>Cases_2-5_Analysis.md</code></span>
+</div>
+<h1>Cable Back-End Assembly — Cases 2–5 Performance Analysis</h1>
+<p><em>Last Updated: 2026-06-21</em></p>
+<h2>Scenario Overview</h2>
+<p>Five simulation cases study how adding robots to a three-station cable back-end assembly line affects throughput and per-part latency. Each case adds one robot to the previous configuration and measures the impact.</p>
+<p><strong>Stations (in order):</strong></p>
+<ol>
+<li>Insert Cable into Port A — Assembler: 8 ticks, Arm: 5 ticks</li>
+<li>Route and Clip Cable — Assembler: 28 ticks, Arm: 16 ticks <em>(precision bottleneck)</em></li>
+<li>Insert Cable into Port B — Assembler: 8 ticks, Arm: 5 ticks</li>
+</ol>
+<p><strong>Target:</strong> 20 ticks per operation (i.e., only the Arm meets target for Route and Clip).</p>
+<p><strong>Robot costs:</strong> AMR $40,000 · Stationary Assembler $25,000 · Dexterous Robotic Arm $80,000</p>
+<hr>
+<h2>Results Table</h2>
+<table><thead><tr><th>Case</th><th>Fleet</th><th>Parts</th><th>Total Ticks</th><th>Part CT</th><th>Full CT</th><th>NVA</th><th>Fleet Cost</th><th>Robot Util</th><th>Station Util</th></tr></thead><tbody><tr><td>Case 2 — Single Assembler</td><td>1 AMR + 1 Assembler</td><td>20</td><td>1,309</td><td>44.0</td><td>244.0</td><td>200.0</td><td>$65,000</td><td>68.0%</td><td>22.4%</td></tr><tr><td>Case 3 — Add Dexterous Arm</td><td>+ 1 Arm</td><td>20</td><td>931</td><td>33.6</td><td>233.6</td><td>200.0</td><td>$145,000</td><td>51.6%</td><td>22.9%</td></tr><tr><td>Case 4 — Two Assemblers + Arm</td><td>+ 1 Assembler</td><td>20</td><td>915</td><td>38.4</td><td>238.4</td><td>200.0</td><td>$170,000</td><td>39.4%</td><td>23.3%</td></tr><tr><td>Case 5 — Two Assemblers + Arm + Two AMRs</td><td>+ 1 AMR</td><td>20</td><td>769</td><td>38.4</td><td>238.4</td><td>200.0</td><td>$210,000</td><td>40.0%</td><td>27.7%</td></tr></tbody></table>
+<p><strong>Metric definitions:</strong></p>
+<ul>
+<li><strong>Part Cycle Time (Part CT):</strong> ticks from Station 1 entry (cable removed from Input Buffer) to Output Buffer arrival. Includes inter-station waiting time.</li>
+<li><strong>Full Cycle Time (Full CT):</strong> Part CT + avg fetch duration + avg deliver duration.</li>
+<li><strong>Non-Value-Added Time (NVA):</strong> Full CT − Part CT (time spent on fetch and deliver, not assembly).</li>
+</ul>
+<hr>
+<h2>Case-by-Case Analysis</h2>
+<h3>Case 2 → Case 3: Add Dexterous Arm (+$80,000)</h3>
+<p><strong>What changed:</strong> A Dexterous Robotic Arm is added. The assignment rule routes it to Route and Clip (the only station where the Assembler's 28-tick time exceeds the 20-tick target). The Arm handles routing at 16 ticks; the Assembler alternates between Port A and Port B at 8 ticks each.</p>
+<p><strong>Result:</strong> Total Ticks drops 378 (1,309 → 931, −29%). Part CT drops from 44.0 to 33.6 ticks.</p>
+<p><strong>Why:</strong> Previously the Assembler's 28-tick Route and Clip was the throughput ceiling. The Arm cuts that to 16 ticks and perfectly matches the Assembler's combined Port A + Port B time (8 + 8 = 16), eliminating the bottleneck. This is the highest-impact change in the series.</p>
+<hr>
+<h3>Case 3 → Case 4: Add Second Assembler (+$25,000)</h3>
+<p><strong>What changed:</strong> A second Stationary Assembler is added. Assembler 1 dedicates to Port A, Assembler 2 to Port B, leaving the Arm solely on Route and Clip.</p>
+<p><strong>Result:</strong> Total Ticks drops only 16 (931 → 915, −2%). Part CT <em>increases</em> from 33.6 to 38.4 ticks.</p>
+<p><strong>Why the Part CT increase is counterintuitive:</strong> In Case 3, the single Assembler alternates between Port A and Port B. Its combined cycle (8 + 8 = 16 ticks) exactly matches the Arm's 16-tick routing cycle, so cables flow through with no inter-station waiting.</p>
+<p>In Case 4, the dedicated Assembler at Port A grabs the next cable the moment Station 1 clears — but Route and Clip is still occupied. The cable sits blocked at Port A for 8 ticks waiting for the Arm. That inter-station wait inflates Part CT by 8 ticks (33.6 → 38.4).</p>
+<p><strong>Why Total Ticks still improves slightly:</strong> In Case 3, the single Assembler occasionally creates brief stalls on the Arm at Route and Clip — when a cable exits Route and Clip and needs Port B exactly as the Assembler is mid-way through Port A for a new cable, the Arm must wait up to 8 ticks for Port B to clear. In Case 4, Assembler 2 is always ready at Port B, so the Arm never stalls. This tighter pipeline recovers roughly one cable-cycle worth of total time (16 ticks).</p>
+<p><strong>The trap:</strong> The second Assembler moves the queue from "robot idle" to "part blocked" without relieving the real bottleneck (the 16-tick Arm at Route and Clip). Adding a robot to a non-bottleneck station does not improve throughput — it only relocates the wait. At $25,000 extra for a 2-tick total improvement and worse per-part latency, this is a poor investment.</p>
+<hr>
+<h3>Case 4 → Case 5: Add Second AMR (+$40,000)</h3>
+<p><strong>What changed:</strong> A second AMR is added. One AMR can fetch from Central Store while the other delivers to the output destination simultaneously.</p>
+<p><strong>Result:</strong> Total Ticks drops 146 (915 → 769, −16%). Part CT unchanged at 38.4. NVA unchanged at 200 ticks.</p>
+<p><strong>Why:</strong> In Case 4, a single AMR must alternate between fetching and delivering — it cannot do both at once. At 100 ticks per trip each way, this serialization becomes the binding constraint at higher throughput levels. Adding a second AMR eliminates the fetch/deliver conflict; both operations run in parallel.</p>
+<p><strong>Why NVA is unchanged:</strong> NVA measures the average non-assembly time <em>per part</em> (fetch + deliver). Each cable still requires one 100-tick fetch trip and one 100-tick deliver trip. Adding a second AMR reduces waiting between those trips but does not change the trip durations themselves. NVA stays at 200 ticks across all cases.</p>
+<hr>
+<h2>Key Takeaways</h2>
+<p><strong>Case 3 is the best value.</strong> It delivers the lowest Part CT (33.6 ticks), a 29% throughput improvement over Case 2, and costs $80,000 more — all from targeting the true bottleneck (Route and Clip).</p>
+<p><strong>Adding robots to non-bottleneck stations is wasteful.</strong> Case 4's second Assembler costs $25,000, worsens Part CT, and barely moves total throughput. Always identify and attack the constraint before adding capacity elsewhere.</p>
+<p><strong>NVA is a floor, not a variable.</strong> All four cases show NVA = 200 ticks because fetch and deliver distances are fixed. The only way to reduce NVA is to shorten the distance to Central Store or add AMRs (which reduces waiting between trips, not trip duration).</p>
+<p><strong>The AMR is the hidden constraint at scale.</strong> Case 5 shows the largest absolute throughput gain (−146 ticks) once the assembly robots are fast enough to expose the AMR serialization. At higher parts-to-build targets, the AMR bottleneck would become even more pronounced.</p>
+<script>
+(function () {
+  document.querySelectorAll('pre').forEach(function (pre) {
+    if (pre.parentElement && pre.parentElement.classList.contains('copy-wrap')) return;
+    var wrap = document.createElement('div');
+    wrap.className = 'copy-wrap';
+    pre.parentNode.insertBefore(wrap, pre);
+    wrap.appendChild(pre);
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'copy-btn';
+    btn.textContent = 'Copy';
+    btn.setAttribute('aria-label', 'Copy code to clipboard');
+    btn.addEventListener('click', function () {
+      var text = pre.innerText.replace(/^\s+|\s+$/g, '');
+      var done = function () {
+        btn.textContent = 'Copied';
+        btn.classList.add('copied');
+        setTimeout(function () {
+          btn.textContent = 'Copy';
+          btn.classList.remove('copied');
+        }, 1500);
+      };
+      var fail = function () {
+        btn.textContent = 'Select manually';
+        btn.classList.add('failed');
+        setTimeout(function () {
+          btn.textContent = 'Copy';
+          btn.classList.remove('failed');
+        }, 2500);
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(done, fail);
+      } else {
+        try {
+          var ta = document.createElement('textarea');
+          ta.value = text;
+          ta.setAttribute('readonly', '');
+          ta.style.position = 'absolute';
+          ta.style.left = '-9999px';
+          document.body.appendChild(ta);
+          ta.select();
+          var ok = document.execCommand('copy');
+          document.body.removeChild(ta);
+          ok ? done() : fail();
+        } catch (e) { fail(); }
+      }
+    });
+    wrap.appendChild(btn);
+  });
+})();
+</script>
+</body></html>

@@ -26,6 +26,7 @@ HTML_DIR = DOCS_DIR / "html"
 GROUPS = [
     ("Project", [
         "PRD.md",
+        "Cases_2-5_Analysis.md",
     ]),
 ]
 
