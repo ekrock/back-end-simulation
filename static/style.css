@@ -76,6 +76,7 @@ body {
   display: inline-block;
 }
 .btn-secondary:hover { background: #f9fafb; }
+.btn-secondary.active { background: #2563eb; color: #fff; border-color: #2563eb; }
 
 .btn-delete {
   background: none;
