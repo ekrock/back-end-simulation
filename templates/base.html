@@ -9,6 +9,9 @@
 <body>
   <header class="site-header">
     <a href="{{ url_for('index') }}" class="site-title">Back-End Assembly Line Simulator</a>
+    <nav class="site-nav">
+      <a href="{{ url_for('help') }}">Help</a>
+    </nav>
   </header>
   <main class="container">
     {% block content %}{% endblock %}

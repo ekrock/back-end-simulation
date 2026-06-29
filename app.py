@@ -292,6 +292,12 @@ def download_run_csv(run_id: str, username: str):
                      download_name=f"{run_id}_config.csv")
 
 
+@app.route("/help")
+@require_auth
+def help(username: str):
+    return render_template("help.html")
+
+
 @app.route("/chart")
 @require_auth
 def chart(username: str):

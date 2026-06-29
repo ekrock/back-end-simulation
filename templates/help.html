@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% block title %}Help — Back-End Assembly Line Simulator{% endblock %}
+
+{% block content %}
+<section class="card">
+  <h2>Quick Start</h2>
+  <ol style="padding-left:1.4em;line-height:2">
+    <li>Download the <a href="{{ url_for('download_template') }}">CSV template</a>.</li>
+    <li>Edit it to define your assembly line (stations, robot types, fleet size, and job parameters).</li>
+    <li>Upload the CSV on the <a href="{{ url_for('index') }}">home page</a> and click <strong>Run Simulation</strong>.</li>
+    <li>Explore the results: OEE metrics, robot and station utilization, and a full tick-by-tick event log.</li>
+    <li>Compare runs on the <a href="{{ url_for('chart') }}">Cost vs. Performance chart</a>.</li>
+  </ol>
+</section>
+
+<section class="card">
+  <h2>CSV Format</h2>
+  <p style="margin-bottom:14px">The CSV is divided into named sections. Each section starts with a header row like <code>[SIMULATION]</code>. Blank lines between sections are ignored.</p>
+
+  <h3>[SIMULATION]</h3>
+  <table class="ml-table" style="margin-bottom:18px">
+    <thead><tr><th>Field</th><th>Description</th></tr></thead>
+    <tbody>
+      <tr><td class="mono">name</td><td>Display name for the simulation run.</td></tr>
+      <tr><td class="mono">description</td><td>Optional free-text description.</td></tr>
+      <tr><td class="mono">max_ticks</td><td>Hard stop — simulation ends when this tick count is reached, even if the job is not finished. Max: 50,000.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>[JOB]</h3>
+  <table class="ml-table" style="margin-bottom:18px">
+    <thead><tr><th>Field</th><th>Description</th></tr></thead>
+    <tbody>
+      <tr><td class="mono">name</td><td>Name of the job (e.g. "Cable Back-End Assembly").</td></tr>
+      <tr><td class="mono">parts_to_build</td><td>Number of parts to complete. Simulation ends early if all parts finish before max_ticks. Max: 1,000.</td></tr>
+      <tr><td class="mono">target_ticks</td><td>Preferred cycle-time target per station action. Used by the robot assignment rule: the cheapest robot whose ticks_per_action is below this target is assigned first.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>[LINE]</h3>
+  <table class="ml-table" style="margin-bottom:18px">
+    <thead><tr><th>Field</th><th>Description</th></tr></thead>
+    <tbody>
+      <tr><td class="mono">input_buffer_size</td><td>Max parts waiting to enter the first station.</td></tr>
+      <tr><td class="mono">output_buffer_size</td><td>Max parts waiting in the output buffer after the last station.</td></tr>
+      <tr><td class="mono">central_store_distance_meters</td><td>One-way distance from the line to Central Store. AMRs travel at their speed (meters/tick) each way.</td></tr>
+      <tr><td class="mono">fetch_trigger_threshold</td><td>AMR fetches a batch from Central Store when the input buffer falls to this count.</td></tr>
+      <tr><td class="mono">deliver_trigger_threshold</td><td>AMR delivers to Central Store when the output buffer reaches this count.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>[STATIONS]</h3>
+  <p style="margin-bottom:8px">One row per assembly station, in order. Header row <code>station_name,action_name</code> is required.</p>
+  <table class="ml-table" style="margin-bottom:18px">
+    <thead><tr><th>Column</th><th>Description</th></tr></thead>
+    <tbody>
+      <tr><td class="mono">station_name</td><td>Human-readable label shown in results (e.g. "Insert Cable into Port A").</td></tr>
+      <tr><td class="mono">action_name</td><td>Internal identifier matched to robot action times (e.g. "insert_cable_port_a"). No spaces.</td></tr>
+    </tbody>
+  </table>
+  <p style="margin-bottom:18px">Max: 20 stations.</p>
+
+  <h3>[ROBOT_TYPES]</h3>
+  <p style="margin-bottom:8px">Each robot type uses two consecutive rows:</p>
+  <table class="ml-table" style="margin-bottom:8px">
+    <thead><tr><th>Row</th><th>Format</th><th>Description</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td class="mono">type_name, speed, cost</td><td><code>type_name</code>: display label. <code>speed</code>: meters per tick (leave blank for stationary robots). <code>cost</code>: fleet cost in dollars per unit.</td></tr>
+      <tr><td>2</td><td class="mono">action_name, ticks, action_name, ticks, …</td><td>Pairs of action name and ticks required. Must include all actions performed by this robot type. Use 0 for AMR fetch/deliver actions (handled by travel time).</td></tr>
+    </tbody>
+  </table>
+  <p style="margin-bottom:18px">Max: 10 robot types, 20 robots per type.</p>
+
+  <h3>[ROBOTS]</h3>
+  <p style="margin-bottom:8px">Fleet size. Header row <code>type_name,count</code> is required.</p>
+  <table class="ml-table" style="margin-bottom:4px">
+    <thead><tr><th>Column</th><th>Description</th></tr></thead>
+    <tbody>
+      <tr><td class="mono">type_name</td><td>Must match a type defined in [ROBOT_TYPES].</td></tr>
+      <tr><td class="mono">count</td><td>Number of robots of this type in the fleet.</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section class="card">
+  <h2>Simulation Limits</h2>
+  <p style="margin-bottom:14px">These limits protect the server from runaway simulations. The CSV parser rejects configurations that exceed them.</p>
+  <table class="ml-table">
+    <thead><tr><th>Parameter</th><th>Limit</th></tr></thead>
+    <tbody>
+      <tr><td>CSV file size</td><td>50 KB</td></tr>
+      <tr><td><code>max_ticks</code></td><td>50,000</td></tr>
+      <tr><td><code>parts_to_build</code></td><td>1,000</td></tr>
+      <tr><td>Number of stations</td><td>20</td></tr>
+      <tr><td>Number of robot types</td><td>10</td></tr>
+      <tr><td>Robots per type</td><td>20</td></tr>
+      <tr><td>Simulation runs (demo account)</td><td>5 per hour; 50 stored runs</td></tr>
+    </tbody>
+  </table>
+</section>
+{% endblock %}
