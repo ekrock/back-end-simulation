@@ -2,7 +2,7 @@
 <html lang="en"><head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Back-End Simulation docs index</title>
+<title>Backlog — Back-End Simulation docs</title>
 <style>
 body {
   max-width: 900px;
@@ -75,18 +75,68 @@ hr { border: none; border-top: 1px solid #d0d4dc; margin: 2em 0; }
   tr:nth-child(even) td { background: #ffffff !important; }
   a { color: #1c2233; text-decoration: underline; }
 }
-
-.index-table { font-size: 14px; }
-.index-table td.path { font-family: ui-monospace, monospace; font-size: 13px; }
-.index-table td.html-col a { font-weight: 700; }
-.index-table td.html-col { width: 90px; text-align: center; }
-.missing { color: #9ca3af; font-style: italic; }
 </style>
 </head>
 <body>
-<h1>Back-End Simulation documentation index</h1>
-<p>Markdown source lives at <code>docs/*.md</code>. HTML mirrors render for easier reading.
-Re-generate after edits with <code>python scripts/maintenance/generate_doc_html.py</code>.</p>
-<p>Last generated: 2026-06-29 16:23 PDT</p>
-<h2>Project</h2><table class="index-table"><thead><tr><th>Markdown source</th><th>Title</th><th>HTML</th></tr></thead><tbody><tr><td class='path'><a href="../PRD.md">PRD.md</a></td><td>PRD: Back-End Assembly Line Simulator (v1-Simple — Weekend Build)</td><td class='html-col'><a href="PRD.html">View HTML</a></td></tr><tr><td class='path'><a href="../Cases_2-5_Analysis.md">Cases_2-5_Analysis.md</a></td><td>Cable Back-End Assembly — Cases 2–5 Performance Analysis</td><td class='html-col'><a href="Cases_2-5_Analysis.html">View HTML</a></td></tr><tr><td class='path'><a href="../backlog.md">backlog.md</a></td><td>Backlog</td><td class='html-col'><a href="backlog.html">View HTML</a></td></tr></tbody></table>
+<div class="doc-header">
+  <span><a href="index.html">← Index</a></span>
+  <span>Generated from <code>backlog.md</code></span>
+</div>
+<h1>Backlog</h1>
+<p>Future enhancements, not yet scheduled.</p>
+<hr>
+<h2>Security</h2>
+<p><strong>Redis shared storage for rate limiter</strong> Flask-Limiter currently uses in-memory storage. With 2 gunicorn workers each process tracks its own counter, so a user can make up to 2× the intended limit (10 uploads/hour instead of 5). Adding Redis as a shared backend would make the rate limit precise across all workers. Requires installing Redis on EC2 and adding <code>flask-limiter[redis]</code> to requirements.txt.</p>
+<script>
+(function () {
+  document.querySelectorAll('pre').forEach(function (pre) {
+    if (pre.parentElement && pre.parentElement.classList.contains('copy-wrap')) return;
+    var wrap = document.createElement('div');
+    wrap.className = 'copy-wrap';
+    pre.parentNode.insertBefore(wrap, pre);
+    wrap.appendChild(pre);
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'copy-btn';
+    btn.textContent = 'Copy';
+    btn.setAttribute('aria-label', 'Copy code to clipboard');
+    btn.addEventListener('click', function () {
+      var text = pre.innerText.replace(/^\s+|\s+$/g, '');
+      var done = function () {
+        btn.textContent = 'Copied';
+        btn.classList.add('copied');
+        setTimeout(function () {
+          btn.textContent = 'Copy';
+          btn.classList.remove('copied');
+        }, 1500);
+      };
+      var fail = function () {
+        btn.textContent = 'Select manually';
+        btn.classList.add('failed');
+        setTimeout(function () {
+          btn.textContent = 'Copy';
+          btn.classList.remove('failed');
+        }, 2500);
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(done, fail);
+      } else {
+        try {
+          var ta = document.createElement('textarea');
+          ta.value = text;
+          ta.setAttribute('readonly', '');
+          ta.style.position = 'absolute';
+          ta.style.left = '-9999px';
+          document.body.appendChild(ta);
+          ta.select();
+          var ok = document.execCommand('copy');
+          document.body.removeChild(ta);
+          ok ? done() : fail();
+        } catch (e) { fail(); }
+      }
+    });
+    wrap.appendChild(btn);
+  });
+})();
+</script>
 </body></html>

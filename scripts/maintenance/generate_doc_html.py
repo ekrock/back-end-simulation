@@ -27,6 +27,7 @@ GROUPS = [
     ("Project", [
         "PRD.md",
         "Cases_2-5_Analysis.md",
+        "backlog.md",
     ]),
 ]
 
