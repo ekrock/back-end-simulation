@@ -8,7 +8,7 @@
       "Bash(git push)",
       "Bash(git restore --staged *)",
       "Bash(ssh back-end-sim-ec2 'cd ~/back-end-simulation/deploy && git pull')",
-      "Bash(ssh back-end-sim-ec2 'cd ~/back-end-simulation && source venv/bin/activate && pip install -r deploy/requirements.txt')",
+      "Bash(ssh back-end-sim-ec2 'cd ~/back-end-simulation && source venv/bin/activate && pip install -r requirements.txt')",
       "Bash(ssh back-end-sim-ec2 'sudo systemctl restart back-end-simulation.service')",
       "Bash(ssh back-end-sim-ec2 'sudo systemctl status back-end-simulation.service')",
       "Bash(ssh back-end-sim-ec2 'sudo journalctl -u back-end-simulation*')",
