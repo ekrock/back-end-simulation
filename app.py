@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 
 from dotenv import load_dotenv
 from flask import (Flask, abort, jsonify, redirect, render_template,
-                   request, send_file, send_from_directory, url_for)
+                   request, send_file, send_from_directory, session, url_for)
 
 from simulation.analytics import compute
 from simulation.csv_parser import ParseError, parse_csv
@@ -18,6 +18,8 @@ from simulation.engine import run_simulation
 load_dotenv()
 
 app = Flask(__name__)
+# SECRET_KEY must be set in .env on EC2 so sessions survive gunicorn restarts/workers
+app.secret_key = os.environ.get("SECRET_KEY", os.urandom(24))
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "data", "runs")
 SAMPLE_CSV = os.path.join(os.path.dirname(__file__), "static", "sample_config.csv")
@@ -49,9 +51,12 @@ def require_auth(f):
     @functools.wraps(f)
     def decorated(*args, **kwargs):
         auth = request.authorization
-        if not auth or not _check_auth(auth.username, auth.password):
-            return _request_auth()
-        return f(*args, **kwargs, username=auth.username)
+        if auth and _check_auth(auth.username, auth.password):
+            return f(*args, **kwargs, username=auth.username)
+        username = session.get("username")
+        if username:
+            return f(*args, **kwargs, username=username)
+        return _request_auth()
     return decorated
 
 
@@ -89,6 +94,16 @@ def _list_runs() -> list[dict]:
 
 
 # ── Routes ────────────────────────────────────────────────────────────────────
+
+@app.route("/login")
+def login():
+    u = request.args.get("u", "")
+    p = request.args.get("p", "")
+    if _check_auth(u, p):
+        session["username"] = u
+        return redirect(url_for("index"))
+    return _request_auth()
+
 
 @app.route("/")
 @require_auth
