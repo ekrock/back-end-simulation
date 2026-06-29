@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "jq -n --arg brief \"$(cat /Users/eric/back-end-simulation/BRIEF.md)\" --arg decisions \"$(cat /Users/eric/back-end-simulation/DECISIONS.md)\" '{\"hookSpecificOutput\": {\"hookEventName\": \"SessionStart\", \"additionalContext\": (\"BRIEF.md:\\n\" + $brief + \"\\n\\nDECISIONS.md:\\n\" + $decisions)}}'",
+            "statusMessage": "Restoring project context..."
+          }
+        ]
+      }
+    ]
+  }
+}
