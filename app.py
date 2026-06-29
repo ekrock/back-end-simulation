@@ -10,6 +10,9 @@ from datetime import datetime, timezone
 from dotenv import load_dotenv
 from flask import (Flask, abort, jsonify, redirect, render_template,
                    request, send_file, send_from_directory, session, url_for)
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 from simulation.analytics import compute
 from simulation.csv_parser import ParseError, parse_csv
@@ -18,11 +21,15 @@ from simulation.engine import run_simulation
 load_dotenv()
 
 app = Flask(__name__)
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1)
 # SECRET_KEY must be set in .env on EC2 so sessions survive gunicorn restarts/workers
 app.secret_key = os.environ.get("SECRET_KEY", os.urandom(24))
+limiter = Limiter(get_remote_address, app=app, default_limits=[])
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "data", "runs")
 SAMPLE_CSV = os.path.join(os.path.dirname(__file__), "static", "sample_config.csv")
+MAX_CSV_BYTES  = 50 * 1024   # 50 KB
+MAX_DEMO_RUNS  = 50
 
 
 # ── Authentication ────────────────────────────────────────────────────────────
@@ -37,6 +44,14 @@ def _check_auth(username: str, password: str) -> bool:
 
 def _is_admin(username: str) -> bool:
     return username == os.environ.get("ADMIN_USERNAME")
+
+
+def _is_admin_request() -> bool:
+    """True if the current request is authenticated as admin (used to exempt rate limits)."""
+    auth = request.authorization
+    if auth and _check_auth(auth.username, auth.password) and _is_admin(auth.username):
+        return True
+    return _is_admin(session.get("username", ""))
 
 
 def _request_auth():
@@ -80,6 +95,16 @@ def _load_meta(run_id: str) -> dict | None:
         return json.load(f)
 
 
+def _enforce_demo_run_cap():
+    """Delete oldest demo-user runs when at or over MAX_DEMO_RUNS. Admin runs are never touched."""
+    demo_username = os.environ.get("DEMO_USERNAME")
+    demo_runs = [r for r in _list_runs() if r.get("username") == demo_username]
+    demo_runs.sort(key=lambda r: r.get("start_time", ""))  # oldest first
+    while len(demo_runs) >= MAX_DEMO_RUNS:
+        oldest = demo_runs.pop(0)
+        shutil.rmtree(_run_dir(oldest["run_id"]), ignore_errors=True)
+
+
 def _list_runs() -> list[dict]:
     if not os.path.exists(DATA_DIR):
         return []
@@ -119,6 +144,7 @@ def download_template(username: str):
 
 
 @app.route("/run/new", methods=["POST"])
+@limiter.limit("5 per hour", exempt_when=_is_admin_request)
 @require_auth
 def new_run(username: str):
     if "csv_file" not in request.files:
@@ -132,7 +158,12 @@ def new_run(username: str):
                                is_admin=_is_admin(username),
                                error="No file selected."), 400
 
-    csv_text = file.read().decode("utf-8", errors="replace")
+    csv_bytes = file.read()
+    if len(csv_bytes) > MAX_CSV_BYTES:
+        return render_template("index.html", runs=_list_runs(),
+                               is_admin=_is_admin(username),
+                               error=f"CSV file too large (max {MAX_CSV_BYTES // 1024} KB)."), 400
+    csv_text = csv_bytes.decode("utf-8", errors="replace")
 
     try:
         config = parse_csv(csv_text)
@@ -140,6 +171,9 @@ def new_run(username: str):
         return render_template("index.html", runs=_list_runs(),
                                is_admin=_is_admin(username),
                                error=f"CSV error: {e}"), 400
+
+    if not _is_admin(username):
+        _enforce_demo_run_cap()
 
     run_id = _new_run_id()
     run_path = _run_dir(run_id)
@@ -168,6 +202,7 @@ def new_run(username: str):
     # Save meta.json
     meta = {
         "run_id": run_id,
+        "username": username,
         "name": config.simulation.name,
         "description": config.simulation.description,
         "start_time": start_time,

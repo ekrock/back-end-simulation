@@ -62,6 +62,14 @@ class ParseError(ValueError):
     pass
 
 
+# Hard limits to prevent runaway simulations
+_MAX_TICKS        = 50_000
+_MAX_PARTS        = 1_000
+_MAX_STATIONS     = 20
+_MAX_ROBOT_TYPES  = 10
+_MAX_ROBOTS_PER_TYPE = 20
+
+
 def parse_csv(text: str) -> SimConfig:
     """Parse CSV text into SimConfig. Raises ParseError on invalid input."""
     lines = text.splitlines()
@@ -172,6 +180,21 @@ def parse_csv(text: str) -> SimConfig:
 
     if not robot_counts:
         raise ParseError("[ROBOTS] must list at least one robot type with a count")
+
+    # Enforce hard limits
+    if simulation.max_ticks > _MAX_TICKS:
+        raise ParseError(f"max_ticks exceeds limit of {_MAX_TICKS:,}")
+    if job.parts_to_build > _MAX_PARTS:
+        raise ParseError(f"parts_to_build exceeds limit of {_MAX_PARTS:,}")
+    if len(stations) > _MAX_STATIONS:
+        raise ParseError(f"Number of stations exceeds limit of {_MAX_STATIONS}")
+    if len(robot_types) > _MAX_ROBOT_TYPES:
+        raise ParseError(f"Number of robot types exceeds limit of {_MAX_ROBOT_TYPES}")
+    for rc in robot_counts:
+        if rc.count > _MAX_ROBOTS_PER_TYPE:
+            raise ParseError(
+                f"Robot count for '{rc.type_name}' exceeds limit of {_MAX_ROBOTS_PER_TYPE}"
+            )
 
     return SimConfig(
         simulation=simulation,
