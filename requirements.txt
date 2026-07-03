@@ -2,3 +2,6 @@ flask
 flask-limiter
 gunicorn
 python-dotenv
+opentelemetry-sdk
+opentelemetry-exporter-otlp-proto-http
+opentelemetry-instrumentation-flask

@@ -13,6 +13,12 @@ from flask import (Flask, abort, jsonify, redirect, render_template,
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from werkzeug.middleware.proxy_fix import ProxyFix
+from opentelemetry import trace
+from opentelemetry.sdk.resources import Resource
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+from opentelemetry.instrumentation.flask import FlaskInstrumentor
 
 from simulation.analytics import compute
 from simulation.csv_parser import ParseError, parse_csv
@@ -20,11 +26,19 @@ from simulation.engine import run_simulation
 
 load_dotenv()
 
+_provider = TracerProvider(resource=Resource.create(
+    {"service.name": os.environ.get("OTEL_SERVICE_NAME", "back-end-simulation")}
+))
+_provider.add_span_processor(BatchSpanProcessor(OTLPSpanExporter()))
+trace.set_tracer_provider(_provider)
+_tracer = trace.get_tracer(__name__)
+
 app = Flask(__name__)
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1)
 # SECRET_KEY must be set in .env on EC2 so sessions survive gunicorn restarts/workers
 app.secret_key = os.environ.get("SECRET_KEY", os.urandom(24))
 limiter = Limiter(get_remote_address, app=app, default_limits=[])
+FlaskInstrumentor().instrument_app(app)
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "data", "runs")
 SAMPLE_CSV = os.path.join(os.path.dirname(__file__), "static", "sample_config.csv")
@@ -166,7 +180,9 @@ def new_run(username: str):
     csv_text = csv_bytes.decode("utf-8", errors="replace")
 
     try:
-        config = parse_csv(csv_text)
+        with _tracer.start_as_current_span("csv.parse") as parse_span:
+            parse_span.set_attribute("csv.size_bytes", len(csv_bytes))
+            config = parse_csv(csv_text)
     except ParseError as e:
         return render_template("index.html", runs=_list_runs(),
                                is_admin=_is_admin(username),
@@ -187,8 +203,20 @@ def new_run(username: str):
     start_time = datetime.now(timezone.utc).isoformat()
 
     try:
-        sim_result = run_simulation(config, log_path)
-        analytics = compute(log_path, sim_result)
+        with _tracer.start_as_current_span("simulation.run") as span:
+            span.set_attribute("sim.username", username)
+            span.set_attribute("sim.run_id", run_id)
+            span.set_attribute("sim.parts_to_build", config.job.parts_to_build)
+            span.set_attribute("sim.target_ticks", config.job.target_ticks)
+            span.set_attribute("sim.num_stations", len(config.stations))
+            span.set_attribute("sim.num_robot_types", len(config.robot_types))
+            with _tracer.start_as_current_span("simulation.engine"):
+                sim_result = run_simulation(config, log_path)
+            with _tracer.start_as_current_span("analytics.compute"):
+                analytics = compute(log_path, sim_result)
+            span.set_attribute("sim.parts_completed", sim_result["parts_completed"])
+            span.set_attribute("sim.total_ticks", sim_result["total_ticks"])
+            span.set_attribute("sim.termination_reason", sim_result["termination_reason"])
     except Exception as e:
         shutil.rmtree(run_path, ignore_errors=True)
         return render_template("index.html", runs=_list_runs(),
