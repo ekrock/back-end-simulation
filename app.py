@@ -144,6 +144,19 @@ def login():
     return _request_auth()
 
 
+@app.route("/demo")
+def demo_login():
+    """Vanity URL for resume/cover-letter links. Credentials come from the
+    server's own env, never from the request, so nothing secret appears in
+    the URL."""
+    u = os.environ.get("DEMO_USERNAME", "")
+    p = os.environ.get("DEMO_PASSWORD", "")
+    if _check_auth(u, p):
+        session["username"] = u
+        return redirect(url_for("index"))
+    return _request_auth()
+
+
 @app.route("/")
 @require_auth
 def index(username: str):
