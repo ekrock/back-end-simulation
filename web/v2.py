@@ -4,6 +4,7 @@ import io
 import json
 import os
 import random
+import re
 import shutil
 import string
 from datetime import datetime, timezone
@@ -35,6 +36,21 @@ SCENARIOS = [
     ("d1_fifo.csv", "P0-D baseline: FIFO scheduling misses a tight deadline."),
     ("d2_edd.csv", "P0-D: EDD scheduling meets the same deadline."),
 ]
+
+_SCENARIO_CODE_RE = re.compile(r"^([a-zA-Z]+)(\d+)")
+
+
+def _scenario_sort_prefix(scenario_filename: str):
+    """Derive a zero-padded, alphabetically-sortable code like 'A01' from a
+    scenario filename like 'a1_one_cell.csv'. Zero-padding keeps a series
+    (a1, a2, ..., a10, ...) in numeric order even past a single digit --
+    plain string sort would otherwise put 'a10' before 'a2'."""
+    stem = os.path.splitext(scenario_filename)[0]
+    m = _SCENARIO_CODE_RE.match(stem)
+    if not m:
+        return None
+    letters, number = m.groups()
+    return f"{letters.upper()}{int(number):02d}"
 
 
 def _new_run_id() -> str:
@@ -181,6 +197,9 @@ def v2_compare(username: str):
             "total_blocked_ticks": results["total_blocked_ticks"],
             "amr_trips_total": results["amr_trips_total"], "fleet_cost": results["fleet_cost"],
         })
+    # Sort by name, not selection order, so a related series (A01, A02, A03, ...)
+    # always compares in logical order regardless of the order runs were checked.
+    rows.sort(key=lambda r: r["name"])
     all_runs = _list_runs()
     return render_template("v2/compare.html", rows=rows, all_runs=all_runs,
                            selected_ids=set(ids), is_admin=_is_admin(username))
@@ -220,6 +239,7 @@ def v2_new_run(username: str):
 
     uploaded = request.files.get("csv_file")
     scenario_name = request.form.get("scenario_name", "").strip()
+    used_scenario_name = None
 
     if uploaded and uploaded.filename:
         csv_bytes = uploaded.read()
@@ -235,6 +255,7 @@ def v2_new_run(username: str):
                                    scenarios=scenarios, error="Unknown scenario file selected."), 400
         with open(os.path.join(SCENARIOS_DIR_V2, scenario_name)) as f:
             csv_text = f.read()
+        used_scenario_name = scenario_name
     else:
         return render_template("v2/index.html", runs=runs, is_admin=_is_admin(username),
                                scenarios=scenarios,
@@ -270,10 +291,19 @@ def v2_new_run(username: str):
     with open(os.path.join(run_path, "results.json"), "w") as f:
         json.dump(results, f, indent=2)
 
+    # Prefix scenario-derived runs with a sortable code (e.g. "A01: ...") so a
+    # related series (a1, a2, a3, ...) sorts into logical order by name, most
+    # useful for picking runs to compare on /v2/compare.
+    run_name = config.simulation.name
+    if used_scenario_name:
+        prefix = _scenario_sort_prefix(used_scenario_name)
+        if prefix:
+            run_name = f"{prefix}: {run_name}"
+
     meta = {
         "run_id": run_id,
         "username": username,
-        "name": config.simulation.name,
+        "name": run_name,
         "description": config.simulation.description,
         "start_time": start_time.isoformat(),
         "status": "completed" if results["termination_reason"] == "all_jobs_complete" else "max_ticks_reached",
