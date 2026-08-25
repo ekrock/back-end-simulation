@@ -1,4 +1,6 @@
 """V2 routes: multi-cell orchestration & replenishment simulation."""
+import csv
+import io
 import json
 import os
 import random
@@ -6,8 +8,8 @@ import shutil
 import string
 from datetime import datetime, timezone
 
-from flask import (Blueprint, abort, jsonify, redirect, render_template,
-                    request, send_file, url_for)
+from flask import (Blueprint, Response, abort, jsonify, redirect,
+                    render_template, request, send_file, url_for)
 
 from simulation_v2.analytics import compute
 from simulation_v2.csv_parser import ParseError, parse_csv
@@ -95,6 +97,55 @@ def _format_log_row(record: dict) -> dict:
         "detail": detail,
         "severity": record["severity_text"],
     }
+
+
+def _results_to_csv(results: dict) -> str:
+    """Flatten results.json into a section-based CSV, mirroring the page layout:
+    run summary, then one table per section (per-job, cell/station/AMR utilization)."""
+    output = io.StringIO()
+    writer = csv.writer(output)
+
+    writer.writerow(["[RUN_SUMMARY]"])
+    writer.writerow(["metric", "value"])
+    for key in ("makespan", "termination_reason", "total_lateness", "jobs_late", "jobs_unfinished",
+                "total_starvation_ticks", "total_blocked_ticks", "total_blocked_ticks_starved",
+                "total_blocked_ticks_output_full", "total_setup_ticks", "total_draining_ticks",
+                "amr_trips_total", "amr_trips_delivery", "amr_trips_pickup", "fleet_cost",
+                "avg_cell_utilization", "avg_station_utilization", "avg_amr_utilization"):
+        writer.writerow([key, results[key]])
+    writer.writerow([])
+
+    writer.writerow(["[PER_JOB]"])
+    writer.writerow(["name", "cell", "arrival_tick", "assigned_tick", "begin_tick",
+                      "complete_at_cell_tick", "completion_tick", "deadline_tick",
+                      "lateness", "unfinished", "avg_unit_cycle_ticks"])
+    for j in results["jobs"]:
+        writer.writerow([j["name"], j["cell"], j["arrival_tick"], j["assigned_tick"], j["begin_tick"],
+                          j["complete_at_cell_tick"], j["completion_tick"], j["deadline_tick"],
+                          j["lateness"], j["unfinished"], j["avg_unit_cycle_ticks"]])
+    writer.writerow([])
+
+    writer.writerow(["[CELL_UTILIZATION]"])
+    writer.writerow(["cell", "utilization_pct", "setup_ticks", "blocked_ticks_starved",
+                      "blocked_ticks_output_full", "draining_ticks"])
+    for c in results["cells"]:
+        writer.writerow([c["name"], results["cell_utilization"][c["name"]], c["setup_ticks"],
+                          c["blocked_ticks_starved"], c["blocked_ticks_output_full"], c["draining_ticks"]])
+    writer.writerow([])
+
+    writer.writerow(["[STATION_UTILIZATION]"])
+    writer.writerow(["station", "utilization_pct", "starving_ticks"])
+    for s in results["stations"]:
+        writer.writerow([s["name"], results["station_utilization"][s["name"]], s["starving_ticks"]])
+    writer.writerow([])
+
+    writer.writerow(["[AMR_UTILIZATION]"])
+    writer.writerow(["amr", "type_name", "utilization_pct", "trips", "cost_dollars"])
+    for a in results["amrs"]:
+        writer.writerow([a["name"], a["type_name"], results["amr_utilization"][a["name"]],
+                          a["trips"], a["cost_dollars"]])
+
+    return output.getvalue()
 
 
 @v2_bp.route("/")
@@ -299,6 +350,21 @@ def v2_download_config(run_id: str, username: str):
     if not os.path.exists(csv_path):
         abort(404)
     return send_file(csv_path, as_attachment=True, download_name=f"{run_id}_config.csv")
+
+
+@v2_bp.route("/run/<run_id>/results")
+@require_auth
+def v2_download_results_csv(run_id: str, username: str):
+    if "/" in run_id or ".." in run_id:
+        abort(404)
+    results_path = os.path.join(_run_dir(run_id), "results.json")
+    if not os.path.exists(results_path):
+        abort(404)
+    with open(results_path) as f:
+        results = json.load(f)
+    csv_text = _results_to_csv(results)
+    return Response(csv_text, mimetype="text/csv",
+                     headers={"Content-Disposition": f"attachment; filename={run_id}_results.csv"})
 
 
 @v2_bp.route("/run/<run_id>", methods=["DELETE"])
