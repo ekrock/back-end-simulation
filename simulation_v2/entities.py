@@ -82,6 +82,8 @@ class AMR:
     station_name: Optional[str] = None
     part_name: Optional[str] = None
     qty: int = 0
+    loaded_qty: int = 0              # actual quantity loaded (may be < units_carried for a
+                                      # finite intermediate part if the store can't fill capacity)
     job_name_for_trip: Optional[str] = None
     busy_ticks: int = 0
     trips: int = 0

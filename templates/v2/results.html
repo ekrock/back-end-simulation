@@ -75,6 +75,8 @@
     <tbody>
       <tr><td>Makespan</td><td class="num">{{ results.makespan }} ticks</td></tr>
       <tr><td>Total lateness</td><td class="num">{{ results.total_lateness }} ticks</td></tr>
+      <tr><td>Jobs late</td><td class="num">{{ results.jobs_late }} / {{ results.jobs | length }}</td></tr>
+      <tr><td>Jobs unfinished</td><td class="num">{{ results.jobs_unfinished }} / {{ results.jobs | length }}</td></tr>
       <tr><td>Total starvation ticks</td><td class="num">{{ results.total_starvation_ticks }}</td></tr>
       <tr><td>Total blocked ticks</td>
           <td class="num">{{ results.total_blocked_ticks }}
@@ -96,11 +98,11 @@
     <thead>
       <tr><th>Job</th><th>Cell</th><th>Arrival</th><th>Assigned</th><th>Begin</th>
         <th>Complete at Cell</th><th>Completion</th><th>Deadline</th>
-        <th>Lateness</th><th>Avg Unit Cycle Ticks</th></tr>
+        <th>Lateness</th><th>Late</th><th>Avg Unit Cycle Ticks</th></tr>
     </thead>
     <tbody>
       {% for j in results.jobs %}
-      <tr>
+      <tr class="{{ 'log-warn' if j.lateness > 0 else '' }}">
         <td>{{ j.name }}</td>
         <td>{{ j.cell }}</td>
         <td class="num">{{ j.arrival_tick }}</td>
@@ -110,6 +112,7 @@
         <td class="num">{{ j.completion_tick if j.completion_tick is not none else "unfinished" }}</td>
         <td class="num">{{ j.deadline_tick }}</td>
         <td class="num">{{ j.lateness }}</td>
+        <td>{{ "Late" if j.lateness > 0 else "On time" }}</td>
         <td class="num">{{ j.avg_unit_cycle_ticks if j.avg_unit_cycle_ticks is not none else "—" }}</td>
       </tr>
       {% endfor %}

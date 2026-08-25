@@ -41,6 +41,7 @@ def run_simulation(config, log_path: str, run_id: str, start_time=None) -> dict:
         for i, jd in enumerate(config.jobs)
     ]
     jobs_by_name = {j.name: j for j in jobs}
+    producer_by_product = {j.product_name: j for j in jobs}  # P1-2: intermediate-part producers
 
     store: dict = {}
     request_queue: deque = deque()
@@ -67,7 +68,7 @@ def run_simulation(config, log_path: str, run_id: str, start_time=None) -> dict:
             break
 
         # ── STEP 2 Advance AMRs ──────────────────────────────────────────
-        _advance_amrs(amrs, cells_by_name, jobs_by_name, store, tick, log)
+        _advance_amrs(amrs, cells_by_name, jobs_by_name, store, tick, log, producer_by_product)
 
         # ── STEP 3 Job arrivals ──────────────────────────────────────────
         for job in jobs:
@@ -75,7 +76,8 @@ def run_simulation(config, log_path: str, run_id: str, start_time=None) -> dict:
                 log("job_arrived", tick, job=job.name, deadline_tick=job.deadline_tick, units=job.units)
 
         # ── STEP 4 Scheduling ─────────────────────────────────────────────
-        scheduling.run_scheduling(config, jobs, cells, tick, min_amr_speed, request_queue, log)
+        scheduling.run_scheduling(config, jobs, cells, tick, min_amr_speed, request_queue, log,
+                                   producer_by_product)
 
         # ── STEP 5 Replenishment ──────────────────────────────────────────
         run_replenishment(config, cells, jobs_by_name, tick, min_amr_speed, request_queue, log)
@@ -84,7 +86,7 @@ def run_simulation(config, log_path: str, run_id: str, start_time=None) -> dict:
         run_pickup_requests(cells, jobs_by_name, tick, request_queue, log)
 
         # ── STEP 7 Dispatch ───────────────────────────────────────────────
-        _run_dispatch(amrs, cells_by_name, request_queue, tick, log)
+        _run_dispatch(amrs, cells_by_name, request_queue, tick, log, store, producer_by_product)
 
         # ── STEP 8 + 9 Cell processing and state transitions ──────────────
         for cell in cells:
@@ -136,7 +138,7 @@ def _log_simulation_end(log, tick, reason, jobs):
 
 # ── Step 2: AMR advance / arrival / return ─────────────────────────────────
 
-def _advance_amrs(amrs, cells_by_name, jobs_by_name, store, tick, log):
+def _advance_amrs(amrs, cells_by_name, jobs_by_name, store, tick, log, producer_by_product):
     for amr in amrs:
         if amr.state == "Idle":
             continue
@@ -145,21 +147,26 @@ def _advance_amrs(amrs, cells_by_name, jobs_by_name, store, tick, log):
         if amr.remaining > 0:
             continue
         if amr.state == "Outbound":
-            _handle_arrival(amr, cells_by_name, jobs_by_name, tick, log)
+            _handle_arrival(amr, cells_by_name, jobs_by_name, tick, log, store, producer_by_product)
         else:
             _handle_return(amr, jobs_by_name, store, tick, log)
 
 
-def _handle_arrival(amr, cells_by_name, jobs_by_name, tick, log):
+def _handle_arrival(amr, cells_by_name, jobs_by_name, tick, log, store, producer_by_product):
     cell = cells_by_name[amr.cell_name]
     job_name = cell.job
     one_way = math.ceil(cell.distance_meters / amr.speed_m_per_s)
 
     if amr.trip_kind == "delivery":
         station = next(s for s in cell.stations if s.name == amr.station_name)
-        qty = min(amr.units_carried, cell.lineside_buffer_size - station.units_remaining)
+        qty = min(amr.loaded_qty, cell.lineside_buffer_size - station.units_remaining)
         station.units_remaining += qty
         station.pending_request = False
+        # P1-2: a finite intermediate part that was loaded but couldn't fit in
+        # the buffer goes back to the store (external parts have no accounting).
+        leftover = amr.loaded_qty - qty
+        if leftover > 0 and amr.part_name in producer_by_product:
+            store[amr.part_name] = store.get(amr.part_name, 0) + leftover
         log("parts_delivered", tick, job=job_name, cell=cell.name, amr=amr.name,
             station=station.name, part=amr.part_name, qty_delivered=qty,
             units_remaining=station.units_remaining)
@@ -197,12 +204,13 @@ def _handle_return(amr, jobs_by_name, store, tick, log):
     amr.station_name = None
     amr.part_name = None
     amr.qty = 0
+    amr.loaded_qty = 0
     amr.job_name_for_trip = None
 
 
 # ── Step 7: dispatch ────────────────────────────────────────────────────────
 
-def _run_dispatch(amrs, cells_by_name, request_queue, tick, log):
+def _run_dispatch(amrs, cells_by_name, request_queue, tick, log, store, producer_by_product):
     while request_queue and any(a.state == "Idle" for a in amrs):
         req = request_queue.popleft()
         amr = next(a for a in amrs if a.state == "Idle")
@@ -217,9 +225,18 @@ def _run_dispatch(amrs, cells_by_name, request_queue, tick, log):
         amr.part_name = req.part_name
         amr.trips += 1
 
+        # P1-2: an intermediate part's store count is finite; external parts
+        # are loaded at full AMR capacity (the store's infinite supply of them
+        # is never decremented).
+        if req.kind == "delivery" and req.part_name in producer_by_product:
+            amr.loaded_qty = min(amr.units_carried, store.get(req.part_name, 0))
+            store[req.part_name] = store.get(req.part_name, 0) - amr.loaded_qty
+        else:
+            amr.loaded_qty = amr.units_carried
+
         log("amr_dispatched", tick, job=cell.job, cell=req.cell_name, amr=amr.name,
             amr_type=amr.type_name, trip_kind=req.kind, station=req.station_name,
-            part=req.part_name, qty=amr.units_carried, one_way_ticks=one_way)
+            part=req.part_name, qty=amr.loaded_qty, one_way_ticks=one_way)
 
 
 # ── Step 8: cell pipeline processing (Section 12.5) ─────────────────────────

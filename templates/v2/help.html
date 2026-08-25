@@ -57,7 +57,7 @@
   <p style="margin-bottom:8px"><code>job_name,product_name,units,arrival_tick,deadline_tick,capable_cells</code>. <code>capable_cells</code> uses <code>|</code> as the separator, e.g. <code>CellA|CellB</code>. <code>arrival_tick</code> defaults to 0 if blank; <code>deadline_tick</code> is required.</p>
 
   <h3>[JOB_STEPS]</h3>
-  <p style="margin-bottom:8px"><code>job_name,station_number,part_name,parts_per_unit,ticks</code>. Rows for a job must be contiguous, station numbers ascending from 1. Every part must be listed in <code>[PARTS]</code>.</p>
+  <p style="margin-bottom:8px"><code>job_name,station_number,part_name,parts_per_unit,ticks</code>. Rows for a job must be contiguous, station numbers ascending from 1. Every part must be listed in <code>[PARTS]</code>, <strong>or</strong> be another job's <code>product_name</code> (an intermediate part). A job that consumes an intermediate part becomes schedulable only after every job producing it has delivered all of its units to the store; the store tracks a finite count of intermediate parts, unlike external parts which are always infinite.</p>
 </section>
 
 <section class="card">

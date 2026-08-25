@@ -208,9 +208,14 @@ def parse_csv(text: str) -> SimConfigV2:
         station_number = _to_int(station_s, f"[JOB_STEPS] station_number for '{job_name}'")
         parts_per_unit = _to_int(ppu_s, f"[JOB_STEPS] parts_per_unit for '{job_name}'")
         ticks = _to_int(ticks_s, f"[JOB_STEPS] ticks for '{job_name}'")
-        if part_name not in part_names:
+        # P1-2: a step's part may be an external part (infinite, [PARTS]) or an
+        # intermediate part -- another job's product_name (finite, store-tracked).
+        if part_name not in part_names and part_name not in product_names:
             raise ParseError(f"[JOB_STEPS] '{job_name}' step references part '{part_name}' "
-                              f"not listed in [PARTS]")
+                              f"not listed in [PARTS] and not any job's product_name")
+        if part_name == jobs_by_name[job_name].product_name:
+            raise ParseError(f"[JOB_STEPS] '{job_name}' cannot consume its own product "
+                              f"'{part_name}' as a part")
         jobs_by_name[job_name].steps.append(
             JobStepDef(station_number=station_number, part_name=part_name,
                        parts_per_unit=parts_per_unit, ticks=ticks)

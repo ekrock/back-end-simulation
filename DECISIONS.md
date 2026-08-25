@@ -127,3 +127,9 @@ The PRD's `V2_PUBLIC` toggle existed only to hide the V2 card on the landing pag
 
 **P1 build order reprioritized per explicit user instruction** (2026-08-25)
 PRD Section 10 lists P1-1 (jobs-late), P1-2 (intermediate parts), P1-3 (compare/charts), P1-4 (AMR trip batching) in that order. User confirmed that exact order for P1-1 → P1-2 → P1-3, and explicitly dropped P1-4 (AMR trip batching) from scope entirely rather than deprioritizing it.
+
+**P1-2 intermediate parts: no cycle detection beyond direct self-reference** (2026-08-25)
+`csv_parser.py` rejects a job step that references its own `product_name`, but does not detect longer dependency cycles (Job A needs B's product, B needs A's product). A cycle like that just leaves both jobs permanently unschedulable (graceful `max_ticks_reached` degradation, not a crash) rather than being caught at parse time. Acceptable given the P1 time budget; full cycle detection would need a proper graph walk over `[JOB_STEPS]`.
+
+**AMR loads intermediate parts from the finite store at dispatch, not arrival** (2026-08-25)
+Matches Section 12.4's "AMR loads ... at the store (instant)" happening in the dispatch step. Any loaded-but-undelivered surplus (buffer had less headroom than was loaded) is returned to the store's count; external parts need no such accounting since the store's supply of them is infinite.
