@@ -177,12 +177,14 @@
   <p class="muted" style="margin-top:8px">Average utilization across all AMRs: {{ results.avg_amr_utilization }}%</p>
 </section>
 
-<section class="card">
-  <h2>Event Log</h2>
+<section class="card" id="event-log-card">
+  <h2>Event Log
+    <button type="button" class="btn-secondary" id="print-log-btn" style="font-size:12px;padding:4px 10px;margin-left:10px">Print Event Log</button>
+  </h2>
   {% if log_truncated %}
   <p class="muted" style="margin-bottom:10px">Showing the first 5,000 events. <a href="{{ url_for('v2.v2_download_log', run_id=run_id) }}">Download the full log</a> to see the rest.</p>
   {% endif %}
-  <div style="max-height:480px;overflow:auto">
+  <div class="log-scroll" style="max-height:480px;overflow:auto">
     <table class="ml-table">
       <thead>
         <tr><th>Tick</th><th>Event</th><th>Job</th><th>Cell</th><th>Station</th><th>AMR</th><th>Part</th><th>Qty</th><th>Detail</th></tr>
@@ -206,9 +208,19 @@
   </div>
 </section>
 
-<p style="margin-top:12px">
+<p class="page-nav-footer" style="margin-top:12px">
   <a href="{{ url_for('v2.v2_download_log', run_id=run_id) }}">Download Event Log</a> &nbsp;·&nbsp;
-  <a href="{{ url_for('v2.v2_download_config', run_id=run_id) }}">Download CSV</a> &nbsp;·&nbsp;
+  <a href="{{ url_for('v2.v2_download_config', run_id=run_id) }}">Download Simulation File</a> &nbsp;·&nbsp;
   <a href="{{ url_for('v2.v2_index') }}">&larr; Back to V2 home</a>
 </p>
+
+<script>
+document.getElementById('print-log-btn').addEventListener('click', function() {
+  document.body.classList.add('printing-log');
+  window.print();
+});
+window.addEventListener('afterprint', function() {
+  document.body.classList.remove('printing-log');
+});
+</script>
 {% endblock %}

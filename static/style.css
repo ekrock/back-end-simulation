@@ -145,6 +145,22 @@ body {
 .log-warn  { background: #fffbeb; }
 .log-error { background: #fef2f2; }
 
+/* ── Print Event Log only ────────────────────────────────────────────────── */
+@media print {
+  body.printing-log .site-header,
+  body.printing-log .card:not(#event-log-card),
+  body.printing-log .page-nav-footer {
+    display: none !important;
+  }
+  body.printing-log #print-log-btn {
+    display: none !important;
+  }
+  body.printing-log .log-scroll {
+    max-height: none !important;
+    overflow: visible !important;
+  }
+}
+
 /* ── Error messages ───────────────────────────────────────────────────────── */
 .error-msg {
   background: #fee2e2;
