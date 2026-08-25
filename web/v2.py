@@ -105,6 +105,36 @@ def v2_index(username: str):
                            scenarios=SCENARIOS)
 
 
+@v2_bp.route("/compare")
+@require_auth
+def v2_compare(username: str):
+    ids = [r for r in request.args.get("runs", "").split(",") if r]
+    rows = []
+    for run_id in ids:
+        if "/" in run_id or ".." in run_id:
+            continue
+        meta = _load_meta(run_id)
+        if not meta:
+            continue
+        results_path = os.path.join(_run_dir(run_id), "results.json")
+        if not os.path.exists(results_path):
+            continue
+        with open(results_path) as f:
+            results = json.load(f)
+        rows.append({
+            "run_id": run_id, "name": meta.get("name", run_id),
+            "scheduling_policy": meta.get("scheduling_policy"),
+            "replenishment_policy": meta.get("replenishment_policy"),
+            "makespan": results["makespan"], "total_lateness": results["total_lateness"],
+            "total_starvation_ticks": results["total_starvation_ticks"],
+            "total_blocked_ticks": results["total_blocked_ticks"],
+            "amr_trips_total": results["amr_trips_total"], "fleet_cost": results["fleet_cost"],
+        })
+    all_runs = _list_runs()
+    return render_template("v2/compare.html", rows=rows, all_runs=all_runs,
+                           selected_ids=set(ids), is_admin=_is_admin(username))
+
+
 @v2_bp.route("/help")
 @require_auth
 def v2_help(username: str):

@@ -37,6 +37,62 @@ See `static/sample_config.csv` for a working example. Sections:
 
 - [PRD.md](docs/PRD.md) — product requirements and build notes
 - [Cases_2-5_Analysis.md](docs/Cases_2-5_Analysis.md) — cable assembly performance analysis across the five scenario cases
+- [BESV2_PRD_TechSpec_v06.md](docs/BESV2_PRD_TechSpec_v06.md) — V2 product requirements and technical spec
+
+## V2 — Multi-Cell Orchestration & Predictive Replenishment
+
+V2 lives alongside V1 at `/v2` (V1 is untouched, still at `/`). It simulates line-level orchestration across multiple cells: job scheduling (FIFO vs. deadline-aware EDD), material replenishment (reactive vs. predictive), and AMR (autonomous mobile robot) dispatch, with a full OpenTelemetry-shaped event log.
+
+### Run it
+
+```
+python -m simulation_v2 static/v2/sample_config_v2.csv --out /tmp/run1
+```
+
+Prints makespan, total lateness, starvation/blocked ticks, and AMR trips. Or upload a CSV through the web UI at `/v2/`.
+
+### CSV Format
+
+Section-based, like V1, with `#`-comment lines and blank-line skipping:
+
+- `[SIMULATION]` — name, description, max_ticks, scheduling_policy (`FIFO`/`EDD`), replenishment_policy (`UnitsLeft,v` / `PercentLeft,p` / `PredictedOut,m`)
+- `[AMR_TYPES]` — type_name, units_carried, speed_m_per_s, cost_dollars
+- `[AMRS]` — type_name, count
+- `[CELLS]` — cell_name, distance_meters, speed_factor, num_stations, lineside_buffer_size, output_buffer_size
+- `[PARTS]` — external part names (infinite supply)
+- `[JOBS]` — job_name, product_name, units, arrival_tick, deadline_tick, capable_cells (`|`-separated)
+- `[JOB_STEPS]` — job_name, station_number, part_name, parts_per_unit, ticks. `part_name` may be an external part or another job's `product_name` (an intermediate part — that job becomes schedulable only once every job producing it has delivered all its units).
+
+Full field reference, policy definitions, and metric formulas: `/v2/help`.
+
+### Scenario files and measured results
+
+Each pair in `static/v2/scenarios/` demonstrates one P0 claim and is asserted by `tests/test_p0_claims.py`:
+
+| Pair | Claim | Measured result |
+|---|---|---|
+| `a1_one_cell.csv` / `a2_two_cells.csv` | Adding a cell reduces makespan via parallelization | 430 → 216 ticks |
+| `b1_one_amr.csv` / `b2_two_amrs.csv` | Adding an AMR reduces starvation and makespan | starvation 8,489 → 4,141 ticks; makespan 9,001 → 4,672 ticks |
+| `c1_reactive.csv` / `c2_predictive.csv` | Predictive replenishment beats reactive when AMR lead time is long relative to consumption | starvation 284 → 0 ticks; makespan 2,167 → 1,883 ticks (costs one extra AMR trip, 10 → 11) |
+| `d1_fifo.csv` / `d2_edd.csv` | Deadline-aware (EDD) scheduling beats FIFO on total lateness | total lateness 119 → 0 ticks |
+
+### Tests
+
+```
+pytest tests/
+```
+
+43 tests: CSV parser validation, FIFO/EDD placement, replenishment policies, hand-computed cell-pipeline mechanics (the Starving/Holding/hand-off state machine), intermediate-part dependencies, engine determinism, and the four P0 claims above.
+
+### Deploy / update
+
+```
+ssh back-end-sim-ec2
+cd ~/back-end-simulation
+bash deploy/update.sh
+```
+
+`deploy/update.sh` pulls `main`, installs any new dependencies, creates `data/runs_v2/` if missing, and restarts the systemd service.
 
 ## Architecture
 
@@ -50,9 +106,27 @@ simulation/
   line.py         — LineState dataclass
   logger.py       — JSONL event writer
 
-app.py            — Flask web layer (auth, run management, file downloads)
-templates/        — base.html, index.html, results.html
-static/           — style.css, sample_config.csv
-data/runs/        — one directory per run (gitignored)
-deploy/           — systemd service, nginx configs, setup scripts
+simulation_v2/
+  csv_parser.py   — V2 section-based CSV → SimConfigV2 dataclasses
+  engine.py       — 10-step tick loop (Sections 12.2-12.6), pipelined cell processing
+  scheduling.py   — FIFO / EDD placement policies
+  replenishment.py — UnitsLeft / PercentLeft / PredictedOut policies
+  entities.py     — Cell, Station, Job, AMR, TransportRequest dataclasses
+  otel_logger.py  — OpenTelemetry-shaped JSONL event log
+  analytics.py    — post-run metrics from run_log.jsonl
+  __main__.py     — CLI runner (python -m simulation_v2 <config.csv> --out <dir>)
+
+web/
+  auth.py         — shared Basic Auth (used by both V1's app.py and V2's routes)
+  v2.py           — V2 Flask Blueprint, mounted at /v2
+
+app.py            — Flask app; V1 routes (unchanged) + registers the V2 blueprint
+templates/        — base.html, index.html, results.html, chart.html, help.html (V1)
+templates/v2/     — base.html, index.html, results.html, help.html, compare.html (V2)
+static/           — style.css (shared), sample_config.csv (V1)
+static/v2/        — sample_config_v2.csv, scenarios/ (V2 scenario CSV pairs)
+data/runs/        — one directory per V1 run (gitignored)
+data/runs_v2/     — one directory per V2 run (gitignored)
+tests/            — V2 pytest suite
+deploy/           — systemd service, nginx configs, setup scripts, update.sh
 ```

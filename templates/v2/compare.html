@@ -1,0 +1,105 @@
+{% extends "v2/base.html" %}
+{% block title %}Compare Runs — Back-End Assembly Line Simulator V2{% endblock %}
+
+{% block content %}
+<section class="card">
+  <h2>Select Runs to Compare</h2>
+  {% if all_runs %}
+  <form method="GET" action="{{ url_for('v2.v2_compare') }}" id="compare-form">
+    <input type="hidden" name="runs" id="runs-field" value="{{ selected_ids | join(',') }}">
+    <table class="ml-table" style="margin-bottom:14px">
+      <thead><tr><th></th><th>Run</th><th>Start Time</th><th>Policies</th><th>Makespan</th><th>Total Lateness</th></tr></thead>
+      <tbody>
+        {% for run in all_runs %}
+        <tr>
+          <td><input type="checkbox" class="run-check" value="{{ run.run_id }}" {% if run.run_id in selected_ids %}checked{% endif %}></td>
+          <td>{{ run.name }}</td>
+          <td class="mono">{{ run.start_time[:19] | replace("T", " ") }}</td>
+          <td class="mono">{{ run.scheduling_policy }} / {{ run.replenishment_policy }}</td>
+          <td class="num">{{ run.makespan }}</td>
+          <td class="num">{{ run.total_lateness }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <button type="submit" class="btn-primary">Compare Selected</button>
+  </form>
+  {% else %}
+  <p class="muted">No runs yet. <a href="{{ url_for('v2.v2_index') }}">Go run a simulation</a> first.</p>
+  {% endif %}
+</section>
+
+{% if rows %}
+<section class="card">
+  <h2>Side-by-Side Comparison</h2>
+  <table class="ml-table">
+    <thead>
+      <tr><th>Run</th><th>Policies</th><th>Makespan</th><th>Total Lateness</th>
+        <th>Starvation Ticks</th><th>Blocked Ticks</th><th>AMR Trips</th><th>Fleet Cost</th></tr>
+    </thead>
+    <tbody>
+      {% for r in rows %}
+      <tr>
+        <td><a href="{{ url_for('v2.v2_view_run', run_id=r.run_id) }}">{{ r.name }}</a></td>
+        <td class="mono">{{ r.scheduling_policy }} / {{ r.replenishment_policy }}</td>
+        <td class="num">{{ r.makespan }}</td>
+        <td class="num">{{ r.total_lateness }}</td>
+        <td class="num">{{ r.total_starvation_ticks }}</td>
+        <td class="num">{{ r.total_blocked_ticks }}</td>
+        <td class="num">{{ r.amr_trips_total }}</td>
+        <td class="num">${{ "{:,}".format(r.fleet_cost) }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+<section class="card">
+  <h2>Charts</h2>
+  <div style="position:relative;height:360px;margin-bottom:24px">
+    <canvas id="chart-makespan"></canvas>
+  </div>
+  <div style="position:relative;height:360px;margin-bottom:24px">
+    <canvas id="chart-lateness"></canvas>
+  </div>
+  <div style="position:relative;height:360px">
+    <canvas id="chart-starvation"></canvas>
+  </div>
+</section>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<script>
+(function() {
+  var labels = {{ rows | map(attribute="name") | list | tojson }};
+  var makespans = {{ rows | map(attribute="makespan") | list | tojson }};
+  var lateness = {{ rows | map(attribute="total_lateness") | list | tojson }};
+  var starvation = {{ rows | map(attribute="total_starvation_ticks") | list | tojson }};
+
+  function barChart(canvasId, data, label, color) {
+    new Chart(document.getElementById(canvasId).getContext('2d'), {
+      type: 'bar',
+      data: { labels: labels, datasets: [{ label: label, data: data, backgroundColor: color }] },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false }, title: { display: true, text: label } },
+        scales: { y: { beginAtZero: true } }
+      }
+    });
+  }
+
+  barChart('chart-makespan', makespans, 'Makespan (ticks)', 'rgba(37, 99, 235, 0.7)');
+  barChart('chart-lateness', lateness, 'Total Lateness (ticks)', 'rgba(220, 38, 38, 0.7)');
+  barChart('chart-starvation', starvation, 'Total Starvation Ticks', 'rgba(217, 119, 6, 0.7)');
+})();
+</script>
+{% endif %}
+
+<script>
+document.getElementById('compare-form') && document.getElementById('compare-form').addEventListener('submit', function(e) {
+  e.preventDefault();
+  var ids = Array.from(document.querySelectorAll('.run-check:checked')).map(function(c) { return c.value; });
+  document.getElementById('runs-field').value = ids.join(',');
+  this.submit();
+});
+</script>
+{% endblock %}

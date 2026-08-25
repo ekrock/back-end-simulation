@@ -1,6 +1,6 @@
 [SIMULATION]
 name,Hello World V2
-description,Two cells each running a 3-step job; small enough to read the whole log.
+description,Two cells each running a 3-step job; one AMR briefly starves a station and blocks a cell so the whole event catalog appears; small enough to read the whole log.
 max_ticks,2000
 scheduling_policy,FIFO
 replenishment_policy,UnitsLeft,2
@@ -11,7 +11,7 @@ Cart,5,2.0,5000
 
 [AMRS]
 type_name,count
-Cart,2
+Cart,1
 
 [CELLS]
 cell_name,distance_meters,speed_factor,num_stations,lineside_buffer_size,output_buffer_size

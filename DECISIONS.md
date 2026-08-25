@@ -133,3 +133,9 @@ PRD Section 10 lists P1-1 (jobs-late), P1-2 (intermediate parts), P1-3 (compare/
 
 **AMR loads intermediate parts from the finite store at dispatch, not arrival** (2026-08-25)
 Matches Section 12.4's "AMR loads ... at the store (instant)" happening in the dispatch step. Any loaded-but-undelivered surplus (buffer had less headroom than was loaded) is returned to the store's count; external parts need no such accounting since the store's supply of them is infinite.
+
+**`sample_config_v2.csv` given one AMR, not two** (2026-08-25)
+Section 17's definition of done requires every Section 12.7 event type to appear in the sample run's log. With two AMRs the sample never starved or blocked a cell, so `station_starving`/`station_starving_end`/`cell_blocked`/`cell_blocked_end` never fired. Dropping to one shared AMR induces a brief starve-and-recover cycle (still ~350 ticks, still readable end to end) so all 18 event types are exercised.
+
+**P1-3 compare page: self-contained run picker instead of a separate index-page form** (2026-08-25)
+`/v2/compare` shows the full run list with checkboxes and the comparison table/charts on the same page (checking boxes and resubmitting a GET to itself), rather than putting checkboxes on `/v2/` and a separate results-only page at `/v2/compare`. One page instead of coordinating two forms across routes; matches the PRD's own `?runs=<id>,<id>,...` URL shape.
