@@ -33,6 +33,7 @@ SCENARIOS = [
     ("b2_two_amrs.csv", "P0-B: a second AMR roughly halves starvation."),
     ("b3_three_amrs.csv", "P0-B series: a third AMR, marginal-returns comparison."),
     ("b4_four_amrs.csv", "P0-B series: a fourth AMR, marginal-returns comparison."),
+    ("b5_five_amrs.csv", "P0-B series: a fifth AMR, marginal-returns comparison."),
     ("c1_reactive.csv", "P0-C baseline: replenishment waits until the buffer empties."),
     ("c2_predictive.csv", "P0-C: predictive replenishment arrives before the buffer empties."),
     ("d1_fifo.csv", "P0-D baseline: FIFO scheduling misses a tight deadline."),
