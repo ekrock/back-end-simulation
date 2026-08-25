@@ -208,7 +208,7 @@ def v2_compare(username: str):
     # Sort by name, not selection order, so a related series (A01, A02, A03, ...)
     # always compares in logical order regardless of the order runs were checked.
     rows.sort(key=lambda r: r["name"])
-    all_runs = _list_runs()
+    all_runs = _list_runs_alphabetical()
     return render_template("v2/compare.html", rows=rows, all_runs=all_runs,
                            selected_ids=set(ids), is_admin=_is_admin(username))
 
