@@ -55,6 +55,20 @@
 </section>
 
 <section class="card">
+  <h2>Fleet Cost Trade-offs</h2>
+  <p class="muted" style="margin-bottom:14px">Points are ordered left to right by fleet cost and connected in that order. Hover a point for that run's full stats.</p>
+  <div style="position:relative;height:400px;margin-bottom:24px">
+    <canvas id="chart-cost-makespan"></canvas>
+  </div>
+  <div style="position:relative;height:400px;margin-bottom:24px">
+    <canvas id="chart-cost-starvation"></canvas>
+  </div>
+  <div style="position:relative;height:400px">
+    <canvas id="chart-cost-blocked"></canvas>
+  </div>
+</section>
+
+<section class="card">
   <h2>Charts</h2>
   <div style="position:relative;height:360px;margin-bottom:24px">
     <canvas id="chart-makespan"></canvas>
@@ -68,12 +82,16 @@
 </section>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
 <script>
 (function() {
-  var labels = {{ rows | map(attribute="name") | list | tojson }};
-  var makespans = {{ rows | map(attribute="makespan") | list | tojson }};
-  var lateness = {{ rows | map(attribute="total_lateness") | list | tojson }};
-  var starvation = {{ rows | map(attribute="total_starvation_ticks") | list | tojson }};
+  Chart.register(ChartDataLabels);
+
+  var rows = {{ rows | tojson }};
+  var labels = rows.map(function(r) { return r.name; });
+  var makespans = rows.map(function(r) { return r.makespan; });
+  var lateness = rows.map(function(r) { return r.total_lateness; });
+  var starvation = rows.map(function(r) { return r.total_starvation_ticks; });
 
   function barChart(canvasId, data, label, color) {
     new Chart(document.getElementById(canvasId).getContext('2d'), {
@@ -81,7 +99,7 @@
       data: { labels: labels, datasets: [{ label: label, data: data, backgroundColor: color }] },
       options: {
         responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { display: false }, title: { display: true, text: label } },
+        plugins: { legend: { display: false }, title: { display: true, text: label }, datalabels: { display: false } },
         scales: { y: { beginAtZero: true } }
       }
     });
@@ -90,6 +108,78 @@
   barChart('chart-makespan', makespans, 'Makespan (ticks)', 'rgba(37, 99, 235, 0.7)');
   barChart('chart-lateness', lateness, 'Total Lateness (ticks)', 'rgba(220, 38, 38, 0.7)');
   barChart('chart-starvation', starvation, 'Total Starvation Ticks', 'rgba(217, 119, 6, 0.7)');
+
+  function statLines(d) {
+    return [
+      d.name,
+      'Fleet cost: $' + d.fleet_cost.toLocaleString(),
+      'Makespan: ' + d.makespan + ' ticks',
+      'Total lateness: ' + d.total_lateness + ' ticks',
+      'Starvation ticks: ' + d.total_starvation_ticks,
+      'Blocked ticks: ' + d.total_blocked_ticks,
+      'AMR trips: ' + d.amr_trips_total,
+    ];
+  }
+
+  function costScatterChart(canvasId, yKey, yLabel, color) {
+    var points = rows.slice()
+      .sort(function(a, b) { return a.fleet_cost - b.fleet_cost; })
+      .map(function(r) { return { x: r.fleet_cost, y: r[yKey], meta: r }; });
+
+    new Chart(document.getElementById(canvasId).getContext('2d'), {
+      type: 'scatter',
+      data: {
+        datasets: [{
+          label: yLabel,
+          data: points,
+          showLine: true,
+          fill: false,
+          tension: 0,
+          borderColor: color,
+          backgroundColor: color,
+          pointRadius: 6,
+          pointHoverRadius: 9,
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        layout: { padding: { top: 28, right: 100, left: 10 } },
+        plugins: {
+          legend: { display: false },
+          title: { display: true, text: yLabel + ' vs. Fleet Cost' },
+          datalabels: {
+            // The first point sits at the top-left corner in these charts
+            // (lowest fleet cost, highest ticks), where a 'top' label
+            // collides with the y-axis's top tick text -- push it right
+            // instead. Every other point labels above as usual.
+            align: function(ctx) { return ctx.dataIndex === 0 ? 'right' : 'top'; },
+            anchor: function(ctx) { return ctx.dataIndex === 0 ? 'center' : 'end'; },
+            offset: 6,
+            color: '#374151', font: { size: 10 }, clip: false,
+            formatter: function(point) { return point.meta.name; },
+          },
+          tooltip: {
+            callbacks: {
+              title: function() { return null; },
+              label: function(item) { return statLines(item.raw.meta); },
+            }
+          }
+        },
+        scales: {
+          x: {
+            type: 'linear',
+            title: { display: true, text: 'Fleet Cost ($)' },
+            ticks: { callback: function(v) { return '$' + v.toLocaleString(); } },
+          },
+          y: { title: { display: true, text: yLabel }, beginAtZero: true, grace: '12%' },
+        }
+      }
+    });
+  }
+
+  costScatterChart('chart-cost-makespan', 'makespan', 'Makespan (ticks)', 'rgba(37, 99, 235, 0.9)');
+  costScatterChart('chart-cost-starvation', 'total_starvation_ticks', 'Starvation Ticks', 'rgba(217, 119, 6, 0.9)');
+  costScatterChart('chart-cost-blocked', 'total_blocked_ticks', 'Blocked Ticks', 'rgba(220, 38, 38, 0.9)');
 })();
 </script>
 {% endif %}
