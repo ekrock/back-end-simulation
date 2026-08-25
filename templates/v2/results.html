@@ -53,7 +53,7 @@
 
   <h3>Jobs</h3>
   <table class="ml-table">
-    <thead><tr><th>Name</th><th>Product</th><th class="num">Units</th><th class="num">Arrival</th><th class="num">Deadline</th><th>Capable Cells</th></tr></thead>
+    <thead><tr><th>Name</th><th>Product</th><th class="num">Units</th><th class="num">Arrival</th><th class="num">Deadline</th><th class="num">Capable Cells</th></tr></thead>
     <tbody>
       {% for j in config.jobs %}
       <tr>
@@ -62,7 +62,7 @@
         <td class="num">{{ j.units }}</td>
         <td class="num">{{ j.arrival_tick }}</td>
         <td class="num">{{ j.deadline_tick }}</td>
-        <td class="mono">{{ j.capable_cells | join(", ") }}</td>
+        <td class="mono num">{{ j.capable_cells | join(", ") }}</td>
       </tr>
       {% endfor %}
     </tbody>
