@@ -73,6 +73,12 @@ def _load_meta(run_id: str):
         return json.load(f)
 
 
+def _list_runs_alphabetical() -> list:
+    """Past Runs displays alphabetically by name (e.g. A01, A02, B01, ...)
+    rather than by recency, so a related series stays grouped and ordered."""
+    return sorted(_list_runs(), key=lambda r: r.get("name", "").lower())
+
+
 def _list_runs() -> list:
     if not os.path.exists(DATA_DIR_V2):
         return []
@@ -169,7 +175,7 @@ def _results_to_csv(results: dict) -> str:
 @v2_bp.route("/")
 @require_auth
 def v2_index(username: str):
-    runs = _list_runs()
+    runs = _list_runs_alphabetical()
     return render_template("v2/index.html", runs=runs, is_admin=_is_admin(username),
                            scenarios=SCENARIOS)
 
@@ -236,7 +242,7 @@ def v2_download_scenario(name: str, username: str):
 @v2_bp.route("/run/new", methods=["POST"])
 @require_auth
 def v2_new_run(username: str):
-    runs = _list_runs()
+    runs = _list_runs_alphabetical()
     scenarios = SCENARIOS
 
     uploaded = request.files.get("csv_file")
