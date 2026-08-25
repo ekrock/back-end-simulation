@@ -18,7 +18,7 @@
 
   <h3>AMR Types</h3>
   <table class="ml-table" style="margin-bottom:18px">
-    <thead><tr><th>Type</th><th>Capacity</th><th>Speed (m/s)</th><th>Cost</th><th>Count</th></tr></thead>
+    <thead><tr><th>Type</th><th class="num">Capacity</th><th class="num">Speed (m/s)</th><th class="num">Cost</th><th class="num">Count</th></tr></thead>
     <tbody>
       {% for t in config.amr_types %}
       {% set count_row = config.amr_counts | selectattr("type_name", "equalto", t.type_name) | first %}
@@ -35,8 +35,8 @@
 
   <h3>Cells</h3>
   <table class="ml-table" style="margin-bottom:18px">
-    <thead><tr><th>Name</th><th>Distance (m)</th><th>Speed Factor</th><th>Stations</th>
-      <th>Line-side Buffer</th><th>Output Buffer</th></tr></thead>
+    <thead><tr><th>Name</th><th class="num">Distance (m)</th><th class="num">Speed Factor</th><th class="num">Stations</th>
+      <th class="num">Line-side Buffer</th><th class="num">Output Buffer</th></tr></thead>
     <tbody>
       {% for c in config.cells %}
       <tr>
@@ -53,7 +53,7 @@
 
   <h3>Jobs</h3>
   <table class="ml-table">
-    <thead><tr><th>Name</th><th>Product</th><th>Units</th><th>Arrival</th><th>Deadline</th><th>Capable Cells</th></tr></thead>
+    <thead><tr><th>Name</th><th>Product</th><th class="num">Units</th><th class="num">Arrival</th><th class="num">Deadline</th><th>Capable Cells</th></tr></thead>
     <tbody>
       {% for j in config.jobs %}
       <tr>
@@ -123,8 +123,8 @@
 <section class="card">
   <h2>Cell Utilization</h2>
   <table class="ml-table">
-    <thead><tr><th>Cell</th><th>Utilization</th><th>Setup Ticks</th>
-      <th>Blocked (starved)</th><th>Blocked (output full)</th><th>Draining Ticks</th></tr></thead>
+    <thead><tr><th>Cell</th><th class="num">Utilization</th><th class="num">Setup Ticks</th>
+      <th class="num">Blocked (starved)</th><th class="num">Blocked (output full)</th><th class="num">Draining Ticks</th></tr></thead>
     <tbody>
       {% for c in results.cells %}
       <tr>
@@ -144,7 +144,7 @@
 <section class="card">
   <h2>Station Utilization</h2>
   <table class="ml-table">
-    <thead><tr><th>Station</th><th>Utilization</th><th>Starving Ticks</th></tr></thead>
+    <thead><tr><th>Station</th><th class="num">Utilization</th><th class="num">Starving Ticks</th></tr></thead>
     <tbody>
       {% for s in results.stations %}
       <tr>
@@ -161,7 +161,7 @@
 <section class="card">
   <h2>AMR Utilization</h2>
   <table class="ml-table">
-    <thead><tr><th>AMR</th><th>Type</th><th>Utilization</th><th>Trips</th><th>Cost</th></tr></thead>
+    <thead><tr><th>AMR</th><th>Type</th><th class="num">Utilization</th><th class="num">Trips</th><th class="num">Cost</th></tr></thead>
     <tbody>
       {% for a in results.amrs %}
       <tr>

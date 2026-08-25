@@ -7,10 +7,10 @@
   {% if error %}
     <p class="error-msg">{{ error }}</p>
   {% endif %}
-  <form method="POST" action="{{ url_for('v2.v2_new_run') }}" enctype="multipart/form-data">
+  <form method="POST" action="{{ url_for('v2.v2_new_run') }}" enctype="multipart/form-data" id="run-form">
     <div class="form-row">
       <label for="csv_file">Upload CSV config file:</label>
-      <input type="file" id="csv_file" name="csv_file" accept=".csv" required>
+      <input type="file" id="csv_file" name="csv_file" accept=".csv">
     </div>
     <div class="form-actions">
       <button type="submit" class="btn-primary">Run Simulation</button>
@@ -21,12 +21,13 @@
 
 <section class="card">
   <h2>Scenario Files</h2>
-  <p class="muted" style="margin-bottom:12px">Each pair demonstrates one P0 claim. Download a file and upload it above to run it.</p>
+  <p class="muted" style="margin-bottom:12px">Each pair demonstrates one P0 claim. Check one box and click "Run Simulation" to run that Scenario. Or download a file, edit it, and upload it above and click "Run Simulation" to run your edited version.</p>
   <table class="ml-table">
-    <thead><tr><th>File</th><th>Demonstrates</th></tr></thead>
+    <thead><tr><th>Selected</th><th>File</th><th>Demonstrates</th></tr></thead>
     <tbody>
       {% for name, description in scenarios %}
       <tr>
+        <td><input type="checkbox" class="scenario-check" name="scenario_name" value="{{ name }}" form="run-form"></td>
         <td><a href="{{ url_for('v2.v2_download_scenario', name=name) }}" class="mono">{{ name }}</a></td>
         <td>{{ description }}</td>
       </tr>
@@ -34,6 +35,18 @@
     </tbody>
   </table>
 </section>
+
+<script>
+document.querySelectorAll('.scenario-check').forEach(function(box) {
+  box.addEventListener('change', function() {
+    if (this.checked) {
+      document.querySelectorAll('.scenario-check').forEach(function(other) {
+        if (other !== box) other.checked = false;
+      });
+    }
+  });
+});
+</script>
 
 <section class="card">
   <h2>Past Runs</h2>

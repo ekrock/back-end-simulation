@@ -167,21 +167,27 @@ def v2_new_run(username: str):
     runs = _list_runs()
     scenarios = SCENARIOS
 
-    if "csv_file" not in request.files:
-        return render_template("v2/index.html", runs=runs, is_admin=_is_admin(username),
-                               scenarios=scenarios, error="No file uploaded."), 400
+    uploaded = request.files.get("csv_file")
+    scenario_name = request.form.get("scenario_name", "").strip()
 
-    file = request.files["csv_file"]
-    if not file.filename:
-        return render_template("v2/index.html", runs=runs, is_admin=_is_admin(username),
-                               scenarios=scenarios, error="No file selected."), 400
-
-    csv_bytes = file.read()
-    if len(csv_bytes) > MAX_CSV_BYTES:
+    if uploaded and uploaded.filename:
+        csv_bytes = uploaded.read()
+        if len(csv_bytes) > MAX_CSV_BYTES:
+            return render_template("v2/index.html", runs=runs, is_admin=_is_admin(username),
+                                   scenarios=scenarios,
+                                   error=f"CSV file too large (max {MAX_CSV_BYTES // 1024} KB)."), 400
+        csv_text = csv_bytes.decode("utf-8", errors="replace")
+    elif scenario_name:
+        valid_names = {n for n, _ in SCENARIOS}
+        if scenario_name not in valid_names:
+            return render_template("v2/index.html", runs=runs, is_admin=_is_admin(username),
+                                   scenarios=scenarios, error="Unknown scenario file selected."), 400
+        with open(os.path.join(SCENARIOS_DIR_V2, scenario_name)) as f:
+            csv_text = f.read()
+    else:
         return render_template("v2/index.html", runs=runs, is_admin=_is_admin(username),
                                scenarios=scenarios,
-                               error=f"CSV file too large (max {MAX_CSV_BYTES // 1024} KB)."), 400
-    csv_text = csv_bytes.decode("utf-8", errors="replace")
+                               error="Upload a CSV file or select a scenario file to run."), 400
 
     try:
         config = parse_csv(csv_text)
