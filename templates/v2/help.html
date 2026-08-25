@@ -1,0 +1,109 @@
+{% extends "v2/base.html" %}
+{% block title %}Help — Back-End Assembly Line Simulator V2{% endblock %}
+
+{% block content %}
+<section class="card">
+  <h2>Quick Start</h2>
+  <ol style="padding-left:1.4em;line-height:2">
+    <li>Download the <a href="{{ url_for('v2.v2_download_template') }}">CSV template</a>, or one of the <a href="{{ url_for('v2.v2_index') }}">scenario files</a>.</li>
+    <li>Edit it to define AMR types/fleet, cells, external parts, and jobs with their steps.</li>
+    <li>Upload the CSV on the <a href="{{ url_for('v2.v2_index') }}">V2 home page</a> and click <strong>Run Simulation</strong>.</li>
+    <li>Explore the results: run summary, per-job lateness, cell/station/AMR utilization, and the full event log.</li>
+  </ol>
+</section>
+
+<section class="card">
+  <h2>Scheduling Policies</h2>
+  <p style="margin-bottom:10px"><strong>FIFO.</strong> Iterates pending jobs in file order and assigns each to the first placeable (Idle, capable) cell in <code>[CELLS]</code> file order. A job with no placeable cell is skipped this tick and reconsidered next tick.</p>
+  <p><strong>EDD (earliest deadline, earliest estimated completion).</strong> Iterates pending jobs sorted by deadline (ties broken by file order), and for each picks the placeable cell with the lowest estimated completion tick — accounting for AMR lead time to set up, the job's pipeline fill time, its per-unit cycle time, and the final pickup trip. A transparent greedy heuristic, not globally optimal.</p>
+</section>
+
+<section class="card">
+  <h2>Replenishment Policies</h2>
+  <p style="margin-bottom:10px"><strong>UnitsLeft,v.</strong> A station requests more parts when its line-side buffer has <code>v</code> or fewer units remaining. <code>UnitsLeft,0</code> is the fully reactive baseline: it only asks once the buffer is empty.</p>
+  <p style="margin-bottom:10px"><strong>PercentLeft,p.</strong> Requests when the buffer has <code>p%</code> or less of its capacity remaining.</p>
+  <p><strong>PredictedOut,m.</strong> Projects depletion from the round-trip lead time of the slowest AMR in the fleet and the cell's per-unit cycle time, and requests early enough that a delivery should arrive with <code>m</code> units of safety margin still on hand — before the station ever starves, when the AMR fleet has slack.</p>
+</section>
+
+<section class="card">
+  <h2>CSV Format</h2>
+  <p style="margin-bottom:14px">The CSV is divided into named sections, each starting with a header row like <code>[SIMULATION]</code>. Blank lines are ignored, and lines beginning with <code>#</code> are comments.</p>
+
+  <h3>[SIMULATION]</h3>
+  <table class="ml-table" style="margin-bottom:18px">
+    <thead><tr><th>Field</th><th>Description</th></tr></thead>
+    <tbody>
+      <tr><td class="mono">name</td><td>Display name for the simulation run.</td></tr>
+      <tr><td class="mono">description</td><td>Optional free-text description.</td></tr>
+      <tr><td class="mono">max_ticks</td><td>Hard stop tick count. Max: 50,000.</td></tr>
+      <tr><td class="mono">scheduling_policy</td><td><code>FIFO</code> or <code>EDD</code>.</td></tr>
+      <tr><td class="mono">replenishment_policy</td><td>Three CSV fields: policy name and its value, e.g. <code>replenishment_policy,PredictedOut,10</code>.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>[AMR_TYPES]</h3>
+  <p style="margin-bottom:8px">One row per AMR type. Header row <code>type_name,units_carried,speed_m_per_s,cost_dollars</code> is required.</p>
+
+  <h3>[AMRS]</h3>
+  <p style="margin-bottom:8px">Fleet size per type. Header row <code>type_name,count</code> is required.</p>
+
+  <h3>[CELLS]</h3>
+  <p style="margin-bottom:8px">One row per cell: <code>cell_name,distance_meters,speed_factor,num_stations,lineside_buffer_size,output_buffer_size</code>. <code>speed_factor</code> must be &ge; 0.1; <code>1.0</code> runs steps at their listed ticks, <code>1.4</code> means 40% slower.</p>
+
+  <h3>[PARTS]</h3>
+  <p style="margin-bottom:8px">One row per external part name. External parts are infinitely available at the Central Store.</p>
+
+  <h3>[JOBS]</h3>
+  <p style="margin-bottom:8px"><code>job_name,product_name,units,arrival_tick,deadline_tick,capable_cells</code>. <code>capable_cells</code> uses <code>|</code> as the separator, e.g. <code>CellA|CellB</code>. <code>arrival_tick</code> defaults to 0 if blank; <code>deadline_tick</code> is required.</p>
+
+  <h3>[JOB_STEPS]</h3>
+  <p style="margin-bottom:8px"><code>job_name,station_number,part_name,parts_per_unit,ticks</code>. Rows for a job must be contiguous, station numbers ascending from 1. Every part must be listed in <code>[PARTS]</code>.</p>
+</section>
+
+<section class="card">
+  <h2>Metrics</h2>
+  <table class="ml-table">
+    <thead><tr><th>Metric</th><th>Definition</th></tr></thead>
+    <tbody>
+      <tr><td>Makespan</td><td>The tick the run ends: all jobs complete and all AMRs idle, or <code>max_ticks</code>.</td></tr>
+      <tr><td>Total lateness</td><td>Sum over jobs of <code>max(0, completion_tick − deadline_tick)</code>. Unfinished jobs use <code>max_ticks</code> as their completion tick.</td></tr>
+      <tr><td>Total starvation ticks</td><td>Sum over stations of ticks spent waiting for parts (Starving state).</td></tr>
+      <tr><td>Total blocked ticks</td><td>Sum over cells of ticks with zero stations Working, split by reason (starved vs. output buffer full).</td></tr>
+      <tr><td>AMR trips</td><td>Count of dispatched delivery and pickup trips.</td></tr>
+      <tr><td>Utilization</td><td>Working/Running/busy ticks divided by makespan, per station/cell/AMR.</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section class="card">
+  <h2>Simulation Limits</h2>
+  <table class="ml-table">
+    <thead><tr><th>Parameter</th><th>Limit</th></tr></thead>
+    <tbody>
+      <tr><td>CSV file size</td><td>50 KB</td></tr>
+      <tr><td><code>max_ticks</code></td><td>50,000</td></tr>
+      <tr><td>Cells</td><td>10</td></tr>
+      <tr><td>Stations per cell</td><td>10</td></tr>
+      <tr><td>AMR types</td><td>10</td></tr>
+      <tr><td>AMRs per type</td><td>20</td></tr>
+      <tr><td>Jobs</td><td>20</td></tr>
+      <tr><td>Units per job</td><td>1,000</td></tr>
+      <tr><td>Steps per job</td><td>10</td></tr>
+      <tr><td>Simulation runs (demo account)</td><td>5 per hour; 50 stored V2 runs across all demo users combined</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section class="card">
+  <h2>Scenario Files</h2>
+  <table class="ml-table">
+    <thead><tr><th>Pair</th><th>Claim</th><th>Differs by</th></tr></thead>
+    <tbody>
+      <tr><td class="mono">a1_one_cell.csv / a2_two_cells.csv</td><td>Adding cells reduces makespan via parallelization.</td><td>Second cell added.</td></tr>
+      <tr><td class="mono">b1_one_amr.csv / b2_two_amrs.csv</td><td>Adding AMRs reduces starvation and makespan.</td><td>AMR count 1 → 2.</td></tr>
+      <tr><td class="mono">c1_reactive.csv / c2_predictive.csv</td><td>Predictive replenishment beats reactive when lead time is long relative to consumption.</td><td><code>UnitsLeft,0</code> → <code>PredictedOut,2</code>.</td></tr>
+      <tr><td class="mono">d1_fifo.csv / d2_edd.csv</td><td>Deadline-aware scheduling beats FIFO on total lateness.</td><td><code>FIFO</code> → <code>EDD</code>.</td></tr>
+    </tbody>
+  </table>
+</section>
+{% endblock %}

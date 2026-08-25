@@ -1,0 +1,37 @@
+[SIMULATION]
+name,P0-A Two Cells
+description,Same four jobs as a1_one_cell.csv, but a second cell lets two run in parallel. Compare makespan.
+max_ticks,5000
+scheduling_policy,FIFO
+replenishment_policy,UnitsLeft,5
+
+[AMR_TYPES]
+type_name,units_carried,speed_m_per_s,cost_dollars
+Cart,5,5.0,3000
+
+[AMRS]
+type_name,count
+Cart,4
+
+[CELLS]
+cell_name,distance_meters,speed_factor,num_stations,lineside_buffer_size,output_buffer_size
+CellA,10,1.0,1,20,10
+CellB,10,1.0,1,20,10
+
+[PARTS]
+part_name
+ConnectorX
+
+[JOBS]
+job_name,product_name,units,arrival_tick,deadline_tick,capable_cells
+Job1,ProductA,5,0,5000,CellA|CellB
+Job2,ProductB,5,0,5000,CellA|CellB
+Job3,ProductC,5,0,5000,CellA|CellB
+Job4,ProductD,5,0,5000,CellA|CellB
+
+[JOB_STEPS]
+job_name,station_number,part_name,parts_per_unit,ticks
+Job1,1,ConnectorX,1,20
+Job2,1,ConnectorX,1,20
+Job3,1,ConnectorX,1,20
+Job4,1,ConnectorX,1,20

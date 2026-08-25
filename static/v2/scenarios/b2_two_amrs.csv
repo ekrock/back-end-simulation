@@ -1,0 +1,34 @@
+[SIMULATION]
+name,P0-B Two AMRs
+description,Same five-station cell as b1_one_amr.csv, but a second AMR roughly halves starvation and cuts makespan. Only the AMR count differs.
+max_ticks,10000
+scheduling_policy,FIFO
+replenishment_policy,UnitsLeft,1
+
+[AMR_TYPES]
+type_name,units_carried,speed_m_per_s,cost_dollars
+Cart,2,1.0,2000
+
+[AMRS]
+type_name,count
+Cart,2
+
+[CELLS]
+cell_name,distance_meters,speed_factor,num_stations,lineside_buffer_size,output_buffer_size
+CellA,150,1.0,5,4,10
+
+[PARTS]
+part_name
+ConnectorX
+
+[JOBS]
+job_name,product_name,units,arrival_tick,deadline_tick,capable_cells
+Job1,Product1,10,0,10000,CellA
+
+[JOB_STEPS]
+job_name,station_number,part_name,parts_per_unit,ticks
+Job1,1,ConnectorX,1,10
+Job1,2,ConnectorX,1,10
+Job1,3,ConnectorX,1,10
+Job1,4,ConnectorX,1,10
+Job1,5,ConnectorX,1,10

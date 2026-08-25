@@ -1,5 +1,4 @@
 """Flask web app for the Back-End Assembly Line Simulator."""
-import functools
 import json
 import os
 import random
@@ -23,6 +22,7 @@ from opentelemetry.instrumentation.flask import FlaskInstrumentor
 from simulation.analytics import compute
 from simulation.csv_parser import ParseError, parse_csv
 from simulation.engine import run_simulation
+from web.auth import _check_auth, _is_admin, _is_admin_request, _request_auth, require_auth
 
 load_dotenv()
 
@@ -44,49 +44,6 @@ DATA_DIR = os.path.join(os.path.dirname(__file__), "data", "runs")
 SAMPLE_CSV = os.path.join(os.path.dirname(__file__), "static", "sample_config.csv")
 MAX_CSV_BYTES  = 50 * 1024   # 50 KB
 MAX_DEMO_RUNS  = 50
-
-
-# ── Authentication ────────────────────────────────────────────────────────────
-
-def _check_auth(username: str, password: str) -> bool:
-    admin_ok = (username == os.environ.get("ADMIN_USERNAME")
-                and password == os.environ.get("ADMIN_PASSWORD"))
-    demo_ok = (username == os.environ.get("DEMO_USERNAME")
-               and password == os.environ.get("DEMO_PASSWORD"))
-    return admin_ok or demo_ok
-
-
-def _is_admin(username: str) -> bool:
-    return username == os.environ.get("ADMIN_USERNAME")
-
-
-def _is_admin_request() -> bool:
-    """True if the current request is authenticated as admin (used to exempt rate limits)."""
-    auth = request.authorization
-    if auth and _check_auth(auth.username, auth.password) and _is_admin(auth.username):
-        return True
-    return _is_admin(session.get("username", ""))
-
-
-def _request_auth():
-    return (
-        "Authentication required",
-        401,
-        {"WWW-Authenticate": 'Basic realm="Back-End Assembly Line Simulator"'},
-    )
-
-
-def require_auth(f):
-    @functools.wraps(f)
-    def decorated(*args, **kwargs):
-        auth = request.authorization
-        if auth and _check_auth(auth.username, auth.password):
-            return f(*args, **kwargs, username=auth.username)
-        username = session.get("username")
-        if username:
-            return f(*args, **kwargs, username=username)
-        return _request_auth()
-    return decorated
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -396,6 +353,11 @@ def delete_run(run_id: str, username: str):
     return jsonify({"status": "deleted"}), 200
 
 
+from web.v2 import v2_bp  # noqa: E402  (registered after app/limiter exist, see web/v2.py)
+app.register_blueprint(v2_bp, url_prefix="/v2")
+
+
 if __name__ == "__main__":
     os.makedirs(DATA_DIR, exist_ok=True)
+    os.makedirs(os.path.join(os.path.dirname(__file__), "data", "runs_v2"), exist_ok=True)
     app.run(debug=True, port=5001)

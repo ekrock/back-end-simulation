@@ -1,0 +1,30 @@
+[SIMULATION]
+name,P0-C Predictive Replenishment
+description,Same single-AMR, single-station cell as c1_reactive.csv, but replenishment predicts depletion and dispatches before the buffer empties (PredictedOut,2). Only the replenishment policy differs. Result: makespan 2167 -> 1883 ticks, starvation 284 -> 0 ticks, at the cost of one extra AMR trip (10 -> 11).
+max_ticks,20000
+scheduling_policy,FIFO
+replenishment_policy,PredictedOut,2
+
+[AMR_TYPES]
+type_name,units_carried,speed_m_per_s,cost_dollars
+Cart,20,1.0,2000
+
+[AMRS]
+type_name,count
+Cart,1
+
+[CELLS]
+cell_name,distance_meters,speed_factor,num_stations,lineside_buffer_size,output_buffer_size
+CellA,80,1.0,1,25,100
+
+[PARTS]
+part_name
+ConnectorX
+
+[JOBS]
+job_name,product_name,units,arrival_tick,deadline_tick,capable_cells
+Job1,Product1,100,0,20000,CellA
+
+[JOB_STEPS]
+job_name,station_number,part_name,parts_per_unit,ticks
+Job1,1,ConnectorX,1,10

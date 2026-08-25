@@ -138,7 +138,12 @@ body {
 }
 .badge-completed { background: #dcfce7; color: #166534; }
 .badge-error     { background: #fee2e2; color: #991b1b; }
+.badge-max_ticks_reached { background: #fef3c7; color: #92400e; }
 .badge-lg { font-size: 14px; padding: 4px 12px; }
+
+/* ── V2 event log severity ───────────────────────────────────────────────── */
+.log-warn  { background: #fffbeb; }
+.log-error { background: #fef2f2; }
 
 /* ── Error messages ───────────────────────────────────────────────────────── */
 .error-msg {

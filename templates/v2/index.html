@@ -1,0 +1,93 @@
+{% extends "v2/base.html" %}
+{% block title %}V2 Home — Back-End Assembly Line Simulator{% endblock %}
+
+{% block content %}
+<section class="card">
+  <h2>New Simulation Run</h2>
+  {% if error %}
+    <p class="error-msg">{{ error }}</p>
+  {% endif %}
+  <form method="POST" action="{{ url_for('v2.v2_new_run') }}" enctype="multipart/form-data">
+    <div class="form-row">
+      <label for="csv_file">Upload CSV config file:</label>
+      <input type="file" id="csv_file" name="csv_file" accept=".csv" required>
+    </div>
+    <div class="form-actions">
+      <button type="submit" class="btn-primary">Run Simulation</button>
+      <a href="{{ url_for('v2.v2_download_template') }}" class="btn-secondary">Download CSV Template</a>
+    </div>
+  </form>
+</section>
+
+<section class="card">
+  <h2>Scenario Files</h2>
+  <p class="muted" style="margin-bottom:12px">Each pair demonstrates one P0 claim. Download a file and upload it above to run it.</p>
+  <table class="ml-table">
+    <thead><tr><th>File</th><th>Demonstrates</th></tr></thead>
+    <tbody>
+      {% for name, description in scenarios %}
+      <tr>
+        <td><a href="{{ url_for('v2.v2_download_scenario', name=name) }}" class="mono">{{ name }}</a></td>
+        <td>{{ description }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+<section class="card">
+  <h2>Past Runs</h2>
+  {% if runs %}
+  <table class="ml-table">
+    <thead>
+      <tr>
+        <th>Run</th>
+        <th>Start Time</th>
+        <th>Policies</th>
+        <th>Makespan</th>
+        <th>Total Lateness</th>
+        <th>Status</th>
+        {% if is_admin %}<th></th>{% endif %}
+      </tr>
+    </thead>
+    <tbody>
+      {% for run in runs %}
+      <tr>
+        <td>
+          <a href="{{ url_for('v2.v2_view_run', run_id=run.run_id) }}" class="run-name">{{ run.name }}</a>
+          {% if run.description %}
+            <div class="run-desc">{{ run.description[:120] }}{% if run.description|length > 120 %}…{% endif %}</div>
+          {% endif %}
+        </td>
+        <td class="mono">{{ run.start_time[:19] | replace("T", " ") }}</td>
+        <td class="mono">{{ run.scheduling_policy }} / {{ run.replenishment_policy }}</td>
+        <td class="num">{{ run.makespan }}</td>
+        <td class="num">{{ run.total_lateness }}</td>
+        <td><span class="badge badge-{{ run.status }}">{{ run.status }}</span></td>
+        {% if is_admin %}
+        <td>
+          <button class="btn-delete" data-run-id="{{ run.run_id }}" title="Delete run">🗑</button>
+        </td>
+        {% endif %}
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="muted">No runs yet. Upload a CSV to get started.</p>
+  {% endif %}
+</section>
+
+{% if is_admin %}
+<script>
+document.querySelectorAll('.btn-delete').forEach(btn => {
+  btn.addEventListener('click', () => {
+    if (!confirm('Delete this run? This cannot be undone.')) return;
+    const runId = btn.dataset.runId;
+    fetch(`/v2/run/${runId}`, { method: 'DELETE' })
+      .then(r => r.ok ? btn.closest('tr').remove() : alert('Delete failed.'));
+  });
+});
+</script>
+{% endif %}
+{% endblock %}

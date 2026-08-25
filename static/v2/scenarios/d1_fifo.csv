@@ -1,0 +1,37 @@
+[SIMULATION]
+name,P0-D FIFO Scheduling (baseline)
+description,Four jobs arrive together; job order in the file does not match deadline order. FIFO assigns cells strictly in file order, so the short, tight-deadline job (Job4, deadline 150) waits behind three longer jobs and finishes late. Total lateness 119 ticks. Compare with d2_edd.csv (0 ticks late).
+max_ticks,5000
+scheduling_policy,FIFO
+replenishment_policy,UnitsLeft,5
+
+[AMR_TYPES]
+type_name,units_carried,speed_m_per_s,cost_dollars
+Cart,10,5.0,3000
+
+[AMRS]
+type_name,count
+Cart,4
+
+[CELLS]
+cell_name,distance_meters,speed_factor,num_stations,lineside_buffer_size,output_buffer_size
+CellA,10,1.0,1,20,20
+CellB,50,1.5,1,20,20
+
+[PARTS]
+part_name
+ConnectorX
+
+[JOBS]
+job_name,product_name,units,arrival_tick,deadline_tick,capable_cells
+Job1,ProductA,10,0,3000,CellA|CellB
+Job2,ProductB,8,0,3000,CellA|CellB
+Job3,ProductC,8,0,3000,CellA|CellB
+Job4,ProductD,2,0,150,CellA|CellB
+
+[JOB_STEPS]
+job_name,station_number,part_name,parts_per_unit,ticks
+Job1,1,ConnectorX,1,15
+Job2,1,ConnectorX,1,15
+Job3,1,ConnectorX,1,15
+Job4,1,ConnectorX,1,10

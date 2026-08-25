@@ -1,0 +1,211 @@
+{% extends "v2/base.html" %}
+{% block title %}{{ meta.name }} — Back-End Assembly Line Simulator V2{% endblock %}
+
+{% block content %}
+<section class="card">
+  <h2>{{ meta.name }}</h2>
+  {% if meta.description %}<p class="muted" style="margin-bottom:8px">{{ meta.description }}</p>{% endif %}
+  <p class="mono" style="margin-bottom:8px">{{ meta.start_time[:19] | replace("T", " ") }}</p>
+  <span class="badge badge-{{ meta.status }}">{{ meta.status }}</span>
+</section>
+
+<section class="card">
+  <h2>Configuration</h2>
+  <p style="margin-bottom:14px">
+    Scheduling: <strong>{{ meta.scheduling_policy }}</strong> &nbsp;·&nbsp;
+    Replenishment: <strong>{{ meta.replenishment_policy }}</strong>
+  </p>
+
+  <h3>AMR Types</h3>
+  <table class="ml-table" style="margin-bottom:18px">
+    <thead><tr><th>Type</th><th>Capacity</th><th>Speed (m/s)</th><th>Cost</th><th>Count</th></tr></thead>
+    <tbody>
+      {% for t in config.amr_types %}
+      {% set count_row = config.amr_counts | selectattr("type_name", "equalto", t.type_name) | first %}
+      <tr>
+        <td>{{ t.type_name }}</td>
+        <td class="num">{{ t.units_carried }}</td>
+        <td class="num">{{ t.speed_m_per_s }}</td>
+        <td class="num">${{ "{:,}".format(t.cost_dollars) }}</td>
+        <td class="num">{{ count_row.count if count_row else 0 }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <h3>Cells</h3>
+  <table class="ml-table" style="margin-bottom:18px">
+    <thead><tr><th>Name</th><th>Distance (m)</th><th>Speed Factor</th><th>Stations</th>
+      <th>Line-side Buffer</th><th>Output Buffer</th></tr></thead>
+    <tbody>
+      {% for c in config.cells %}
+      <tr>
+        <td>{{ c.cell_name }}</td>
+        <td class="num">{{ c.distance_meters }}</td>
+        <td class="num">{{ c.speed_factor }}</td>
+        <td class="num">{{ c.num_stations }}</td>
+        <td class="num">{{ c.lineside_buffer_size }}</td>
+        <td class="num">{{ c.output_buffer_size }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <h3>Jobs</h3>
+  <table class="ml-table">
+    <thead><tr><th>Name</th><th>Product</th><th>Units</th><th>Arrival</th><th>Deadline</th><th>Capable Cells</th></tr></thead>
+    <tbody>
+      {% for j in config.jobs %}
+      <tr>
+        <td>{{ j.job_name }}</td>
+        <td>{{ j.product_name }}</td>
+        <td class="num">{{ j.units }}</td>
+        <td class="num">{{ j.arrival_tick }}</td>
+        <td class="num">{{ j.deadline_tick }}</td>
+        <td class="mono">{{ j.capable_cells | join(", ") }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+<section class="card">
+  <h2>Run Summary</h2>
+  <table class="ml-table">
+    <tbody>
+      <tr><td>Makespan</td><td class="num">{{ results.makespan }} ticks</td></tr>
+      <tr><td>Total lateness</td><td class="num">{{ results.total_lateness }} ticks</td></tr>
+      <tr><td>Total starvation ticks</td><td class="num">{{ results.total_starvation_ticks }}</td></tr>
+      <tr><td>Total blocked ticks</td>
+          <td class="num">{{ results.total_blocked_ticks }}
+            (starved: {{ results.total_blocked_ticks_starved }},
+             output full: {{ results.total_blocked_ticks_output_full }})</td></tr>
+      <tr><td>Total setup ticks</td><td class="num">{{ results.total_setup_ticks }}</td></tr>
+      <tr><td>Total draining ticks</td><td class="num">{{ results.total_draining_ticks }}</td></tr>
+      <tr><td>AMR trips</td>
+          <td class="num">{{ results.amr_trips_total }}
+            (delivery: {{ results.amr_trips_delivery }}, pickup: {{ results.amr_trips_pickup }})</td></tr>
+      <tr><td>Fleet cost</td><td class="num">${{ "{:,}".format(results.fleet_cost) }}</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section class="card">
+  <h2>Per-Job Results</h2>
+  <table class="ml-table">
+    <thead>
+      <tr><th>Job</th><th>Cell</th><th>Arrival</th><th>Assigned</th><th>Begin</th>
+        <th>Complete at Cell</th><th>Completion</th><th>Deadline</th>
+        <th>Lateness</th><th>Avg Unit Cycle Ticks</th></tr>
+    </thead>
+    <tbody>
+      {% for j in results.jobs %}
+      <tr>
+        <td>{{ j.name }}</td>
+        <td>{{ j.cell }}</td>
+        <td class="num">{{ j.arrival_tick }}</td>
+        <td class="num">{{ j.assigned_tick if j.assigned_tick is not none else "—" }}</td>
+        <td class="num">{{ j.begin_tick if j.begin_tick is not none else "—" }}</td>
+        <td class="num">{{ j.complete_at_cell_tick if j.complete_at_cell_tick is not none else "—" }}</td>
+        <td class="num">{{ j.completion_tick if j.completion_tick is not none else "unfinished" }}</td>
+        <td class="num">{{ j.deadline_tick }}</td>
+        <td class="num">{{ j.lateness }}</td>
+        <td class="num">{{ j.avg_unit_cycle_ticks if j.avg_unit_cycle_ticks is not none else "—" }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+<section class="card">
+  <h2>Cell Utilization</h2>
+  <table class="ml-table">
+    <thead><tr><th>Cell</th><th>Utilization</th><th>Setup Ticks</th>
+      <th>Blocked (starved)</th><th>Blocked (output full)</th><th>Draining Ticks</th></tr></thead>
+    <tbody>
+      {% for c in results.cells %}
+      <tr>
+        <td>{{ c.name }}</td>
+        <td class="num">{{ results.cell_utilization[c.name] }}%</td>
+        <td class="num">{{ c.setup_ticks }}</td>
+        <td class="num">{{ c.blocked_ticks_starved }}</td>
+        <td class="num">{{ c.blocked_ticks_output_full }}</td>
+        <td class="num">{{ c.draining_ticks }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <p class="muted" style="margin-top:8px">Average utilization across cells that ran a job: {{ results.avg_cell_utilization }}%</p>
+</section>
+
+<section class="card">
+  <h2>Station Utilization</h2>
+  <table class="ml-table">
+    <thead><tr><th>Station</th><th>Utilization</th><th>Starving Ticks</th></tr></thead>
+    <tbody>
+      {% for s in results.stations %}
+      <tr>
+        <td>{{ s.name }}</td>
+        <td class="num">{{ results.station_utilization[s.name] }}%</td>
+        <td class="num">{{ s.starving_ticks }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <p class="muted" style="margin-top:8px">Average utilization across used stations: {{ results.avg_station_utilization }}%</p>
+</section>
+
+<section class="card">
+  <h2>AMR Utilization</h2>
+  <table class="ml-table">
+    <thead><tr><th>AMR</th><th>Type</th><th>Utilization</th><th>Trips</th><th>Cost</th></tr></thead>
+    <tbody>
+      {% for a in results.amrs %}
+      <tr>
+        <td>{{ a.name }}</td>
+        <td>{{ a.type_name }}</td>
+        <td class="num">{{ results.amr_utilization[a.name] }}%</td>
+        <td class="num">{{ a.trips }}</td>
+        <td class="num">${{ "{:,}".format(a.cost_dollars) }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <p class="muted" style="margin-top:8px">Average utilization across all AMRs: {{ results.avg_amr_utilization }}%</p>
+</section>
+
+<section class="card">
+  <h2>Event Log</h2>
+  {% if log_truncated %}
+  <p class="muted" style="margin-bottom:10px">Showing the first 5,000 events. <a href="{{ url_for('v2.v2_download_log', run_id=run_id) }}">Download the full log</a> to see the rest.</p>
+  {% endif %}
+  <div style="max-height:480px;overflow:auto">
+    <table class="ml-table">
+      <thead>
+        <tr><th>Tick</th><th>Event</th><th>Job</th><th>Cell</th><th>Station</th><th>AMR</th><th>Part</th><th>Qty</th><th>Detail</th></tr>
+      </thead>
+      <tbody>
+        {% for row in log_rows %}
+        <tr class="{{ 'log-warn' if row.severity == 'WARN' else ('log-error' if row.severity == 'ERROR' else '') }}">
+          <td class="num">{{ row.tick }}</td>
+          <td>{{ row.event }}</td>
+          <td>{{ row.job }}</td>
+          <td>{{ row.cell }}</td>
+          <td>{{ row.station }}</td>
+          <td>{{ row.amr }}</td>
+          <td>{{ row.part }}</td>
+          <td class="num">{{ row.qty }}</td>
+          <td class="mono">{{ row.detail }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<p style="margin-top:12px">
+  <a href="{{ url_for('v2.v2_download_log', run_id=run_id) }}">Download Event Log</a> &nbsp;·&nbsp;
+  <a href="{{ url_for('v2.v2_download_config', run_id=run_id) }}">Download CSV</a> &nbsp;·&nbsp;
+  <a href="{{ url_for('v2.v2_index') }}">&larr; Back to V2 home</a>
+</p>
+{% endblock %}
