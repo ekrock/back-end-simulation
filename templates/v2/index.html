@@ -30,8 +30,13 @@
   <table class="ml-table">
     <thead><tr><th>Selected</th><th>File</th><th>Demonstrates</th></tr></thead>
     <tbody>
+      {% set ns = namespace(prev=none, shade=false) %}
       {% for name, description in scenarios %}
-      <tr>
+        {% if name[0] != ns.prev %}
+          {% set ns.shade = not ns.shade %}
+          {% set ns.prev = name[0] %}
+        {% endif %}
+      <tr class="{{ 'row-shade' if ns.shade }}">
         <td><input type="checkbox" class="scenario-check" name="scenario_name" value="{{ name }}" form="run-form"></td>
         <td><a href="{{ url_for('v2.v2_download_scenario', name=name) }}" class="mono">{{ name }}</a></td>
         <td>{{ description }}</td>
@@ -69,8 +74,13 @@ document.querySelectorAll('.scenario-check').forEach(function(box) {
       </tr>
     </thead>
     <tbody>
+      {% set ns = namespace(prev=none, shade=false) %}
       {% for run in runs %}
-      <tr>
+        {% if run.group_key and run.group_key != ns.prev %}
+          {% set ns.shade = not ns.shade %}
+          {% set ns.prev = run.group_key %}
+        {% endif %}
+      <tr class="{{ 'row-shade' if (run.group_key and ns.shade) }}">
         <td>
           <a href="{{ url_for('v2.v2_view_run', run_id=run.run_id) }}" class="run-name">{{ run.name }}</a>
           {% if run.description %}

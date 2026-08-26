@@ -10,8 +10,13 @@
     <table class="ml-table" style="margin-bottom:14px">
       <thead><tr><th></th><th>Run</th><th>Start Time</th><th>Policies</th><th>Makespan</th><th>Total Lateness</th></tr></thead>
       <tbody>
+        {% set ns = namespace(prev=none, shade=false) %}
         {% for run in all_runs %}
-        <tr>
+          {% if run.group_key and run.group_key != ns.prev %}
+            {% set ns.shade = not ns.shade %}
+            {% set ns.prev = run.group_key %}
+          {% endif %}
+        <tr class="{{ 'row-shade' if (run.group_key and ns.shade) }}">
           <td><input type="checkbox" class="run-check" value="{{ run.run_id }}" {% if run.run_id in selected_ids %}checked{% endif %}></td>
           <td>{{ run.name }}</td>
           <td class="mono">{{ run.start_time[:19] | replace("T", " ") }}</td>

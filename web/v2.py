@@ -80,10 +80,26 @@ def _load_meta(run_id: str):
         return json.load(f)
 
 
+_RUN_GROUP_RE = re.compile(r"^([A-Za-z]+)\d+:")
+
+
+def _run_group_key(run: dict):
+    """Scenario-derived runs are named e.g. 'B02: ...' -- group by that
+    letter so the UI can alternate row shading by scenario family. Runs
+    from a manually-uploaded CSV have no such prefix and get no group
+    (they aren't part of a lettered family, so shading them would imply
+    a grouping that doesn't exist)."""
+    m = _RUN_GROUP_RE.match(run.get("name", ""))
+    return m.group(1).upper() if m else None
+
+
 def _list_runs_alphabetical() -> list:
     """Past Runs displays alphabetically by name (e.g. A01, A02, B01, ...)
     rather than by recency, so a related series stays grouped and ordered."""
-    return sorted(_list_runs(), key=lambda r: r.get("name", "").lower())
+    runs = sorted(_list_runs(), key=lambda r: r.get("name", "").lower())
+    for r in runs:
+        r["group_key"] = _run_group_key(r)
+    return runs
 
 
 def _list_runs() -> list:

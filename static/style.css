@@ -122,6 +122,7 @@ body {
   vertical-align: top;
 }
 .ml-table tr:last-child td { border-bottom: none; }
+.ml-table tr.row-shade td { background: #f1f5f9; }
 .ml-table tr:hover td { background: #f8fafc; }
 
 .num  { text-align: right; font-variant-numeric: tabular-nums; }
