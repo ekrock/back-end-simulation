@@ -55,7 +55,7 @@ Prints makespan, total lateness, starvation/blocked ticks, and AMR trips. Or upl
 
 Section-based, like V1, with `#`-comment lines and blank-line skipping:
 
-- `[SIMULATION]` — name, description, max_ticks, scheduling_policy (`FIFO`/`EDD`), replenishment_policy (`UnitsLeft,v` / `PercentLeft,p` / `PredictedOut,m`)
+- `[SIMULATION]` — name, description, max_ticks, scheduling_policy (`FIFO`/`EDD`), replenishment_policy (`UnitsLeft,v` / `PercentLeft,p` / `PredictedOut,m`), optional preemption_enabled (`true`/`false`, default `false`)
 - `[AMR_TYPES]` — type_name, units_carried, speed_m_per_s, cost_dollars
 - `[AMRS]` — type_name, count
 - `[CELLS]` — cell_name, distance_meters, speed_factor, num_stations, lineside_buffer_size, output_buffer_size
@@ -77,6 +77,7 @@ Each pair in `static/v2/scenarios/` demonstrates one claim, most asserted by `te
 | `c1_reactive.csv` / `c2_predictive.csv` | Predictive replenishment beats reactive when AMR lead time is long relative to consumption | starvation 284 → 0 ticks; makespan 2,167 → 1,883 ticks (costs one extra AMR trip, 10 → 11) |
 | `d1_fifo.csv` / `d2_edd.csv` | Deadline-aware (EDD) scheduling beats FIFO on total lateness | total lateness 119 → 0 ticks |
 | `e1_unstaged.csv` / `e2_staged.csv` | A `min_available` of 0 lets a job compete for its cell with zero buffer; a threshold of 3 keeps it out of the race until an unrelated job takes the cell first, giving the producer time to build a real buffer | starvation 42 → 0 ticks; makespan 232 → 152 ticks; Line2 utilization 57% → 87% |
+| `f1_no_preemption.csv` / `f2_preemption.csv` | Preemption saves a late-arriving, tight-deadline job without costing the displaced job its own (more relaxed) deadline | `preemption_enabled`: false → true; JobShort's lateness 151 → 0 ticks; JobLong (displaced once) still finishes with 0 lateness in both files |
 
 ### Tests
 
@@ -84,7 +85,7 @@ Each pair in `static/v2/scenarios/` demonstrates one claim, most asserted by `te
 pytest tests/
 ```
 
-47 tests: CSV parser validation, FIFO/EDD placement, replenishment policies, hand-computed cell-pipeline mechanics (the Starving/Holding/hand-off state machine), intermediate-part dependencies (including the min_available threshold), engine determinism, the four P0 claims, and the E claim above.
+58 tests: CSV parser validation, FIFO/EDD placement, replenishment policies, hand-computed cell-pipeline mechanics (the Starving/Holding/hand-off state machine), intermediate-part dependencies (including the min_available threshold), preemption decision logic and mechanics, engine determinism, the four P0 claims, and the E and F claims above.
 
 ### Deploy / update
 

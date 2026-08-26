@@ -11,6 +11,7 @@ class SimulationConfigV2:
     scheduling_policy: str          # "FIFO" | "EDD"
     replenishment_policy: str       # "UnitsLeft" | "PercentLeft" | "PredictedOut"
     replenishment_value: int
+    preemption_enabled: bool = False
 
 
 @dataclass

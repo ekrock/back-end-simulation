@@ -66,6 +66,8 @@ class Job:
     completion_tick: Optional[int] = None
     units_delivered_to_store: int = 0
     cycle_ticks_list: list = field(default_factory=list)
+    preemption_evaluated: bool = False  # a preemptable job is only ever considered once
+    times_preempted: int = 0
 
 
 @dataclass
@@ -77,7 +79,7 @@ class AMR:
     cost_dollars: int
     state: str = "Idle"              # Idle | Outbound | Inbound
     remaining: int = 0
-    trip_kind: Optional[str] = None  # "delivery" | "pickup"
+    trip_kind: Optional[str] = None  # "delivery" | "pickup" | "return"
     cell_name: Optional[str] = None
     station_name: Optional[str] = None
     part_name: Optional[str] = None
@@ -91,7 +93,13 @@ class AMR:
 
 @dataclass
 class TransportRequest:
-    kind: str                        # "delivery" | "pickup"
+    kind: str                        # "delivery" | "pickup" | "return"
     cell_name: str
     station_name: Optional[str] = None
     part_name: Optional[str] = None
+    qty: Optional[int] = None        # fixed quantity for "return" trips (the buffer is
+                                      # cleared instantly at preemption, so this can't be
+                                      # recomputed later from cell state like delivery/pickup)
+    job_name: Optional[str] = None   # job to attribute a "return" trip's events to,
+                                      # captured at preemption time since cell.job changes
+                                      # to the new job immediately

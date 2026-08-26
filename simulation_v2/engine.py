@@ -170,6 +170,12 @@ def _handle_arrival(amr, cells_by_name, jobs_by_name, tick, log, store, producer
         log("parts_delivered", tick, job=job_name, cell=cell.name, amr=amr.name,
             station=station.name, part=amr.part_name, qty_delivered=qty,
             units_remaining=station.units_remaining)
+    elif amr.trip_kind == "return":
+        # Preemption: the buffer was already cleared at the moment of
+        # preemption, so there's nothing left to touch on the cell/station --
+        # this trip is a background bookkeeping formality (AMR time/cost only).
+        log("parts_returned", tick, job=amr.job_name_for_trip, cell=cell.name, amr=amr.name,
+            station=amr.station_name, part=amr.part_name, qty=amr.qty)
     else:  # pickup
         qty = min(amr.units_carried, cell.output_buffer_count)
         cell.output_buffer_count -= qty
@@ -184,9 +190,9 @@ def _handle_arrival(amr, cells_by_name, jobs_by_name, tick, log, store, producer
 
 
 def _handle_return(amr, jobs_by_name, store, tick, log):
-    if amr.trip_kind == "delivery":
-        log("amr_returned", tick, amr=amr.name, trip_kind="delivery")
-    else:
+    if amr.trip_kind in ("delivery", "return"):
+        log("amr_returned", tick, amr=amr.name, trip_kind=amr.trip_kind)
+    else:  # pickup
         job = jobs_by_name[amr.job_name_for_trip]
         store[job.product_name] = store.get(job.product_name, 0) + amr.qty
         job.units_delivered_to_store += amr.qty
@@ -225,16 +231,27 @@ def _run_dispatch(amrs, cells_by_name, request_queue, tick, log, store, producer
         amr.part_name = req.part_name
         amr.trips += 1
 
-        # P1-2: an intermediate part's store count is finite; external parts
-        # are loaded at full AMR capacity (the store's infinite supply of them
-        # is never decremented).
-        if req.kind == "delivery" and req.part_name in producer_by_product:
-            amr.loaded_qty = min(amr.units_carried, store.get(req.part_name, 0))
-            store[req.part_name] = store.get(req.part_name, 0) - amr.loaded_qty
+        if req.kind == "return":
+            # Preemption: the job this trip serves was captured on the request
+            # at preemption time, since the cell has already been handed to a
+            # new job by the time this trip is dispatched -- cell.job would be
+            # wrong here.
+            amr.qty = req.qty
+            amr.loaded_qty = req.qty
+            amr.job_name_for_trip = req.job_name
+            job_for_log = req.job_name
         else:
-            amr.loaded_qty = amr.units_carried
+            # P1-2: an intermediate part's store count is finite; external
+            # parts are loaded at full AMR capacity (the store's infinite
+            # supply of them is never decremented).
+            if req.kind == "delivery" and req.part_name in producer_by_product:
+                amr.loaded_qty = min(amr.units_carried, store.get(req.part_name, 0))
+                store[req.part_name] = store.get(req.part_name, 0) - amr.loaded_qty
+            else:
+                amr.loaded_qty = amr.units_carried
+            job_for_log = cell.job
 
-        log("amr_dispatched", tick, job=cell.job, cell=req.cell_name, amr=amr.name,
+        log("amr_dispatched", tick, job=job_for_log, cell=req.cell_name, amr=amr.name,
             amr_type=amr.type_name, trip_kind=req.kind, station=req.station_name,
             part=req.part_name, qty=amr.loaded_qty, one_way_ticks=one_way)
 
@@ -393,6 +410,7 @@ def _build_result(makespan, termination_reason, cells, jobs, amrs, store):
                 "unfinished": j.completion_tick is None,
                 "avg_unit_cycle_ticks": (round(sum(j.cycle_ticks_list) / len(j.cycle_ticks_list), 1)
                                           if j.cycle_ticks_list else None),
+                "times_preempted": j.times_preempted,
             }
             for j in jobs
         ],

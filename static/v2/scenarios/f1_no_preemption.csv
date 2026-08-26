@@ -1,0 +1,33 @@
+[SIMULATION]
+name,F1 No Preemption (baseline)
+description,A long, relaxed-deadline job occupies the only cell when a short, tight-deadline job arrives at tick 50. Without preemption, the new job simply waits its turn and misses its deadline badly. Compare with f2_preemption.csv: JobShort's lateness 151 -> 0 ticks, and JobLong still hits its own (far more relaxed) deadline in both files.
+max_ticks,2000
+scheduling_policy,FIFO
+replenishment_policy,UnitsLeft,3
+preemption_enabled,false
+
+[AMR_TYPES]
+type_name,units_carried,speed_m_per_s,cost_dollars
+Cart,5,5.0,3000
+
+[AMRS]
+type_name,count
+Cart,2
+
+[CELLS]
+cell_name,distance_meters,speed_factor,num_stations,lineside_buffer_size,output_buffer_size
+CellA,5,1.0,1,10,10
+
+[PARTS]
+part_name
+RawMaterial
+
+[JOBS]
+job_name,product_name,units,arrival_tick,deadline_tick,capable_cells
+JobLong,LongProduct,20,0,2000,CellA
+JobShort,ShortProduct,2,50,70,CellA
+
+[JOB_STEPS]
+job_name,station_number,part_name,parts_per_unit,ticks
+JobLong,1,RawMaterial,1,10
+JobShort,1,RawMaterial,1,5

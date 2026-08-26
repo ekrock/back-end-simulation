@@ -19,6 +19,13 @@
 </section>
 
 <section class="card">
+  <h2>Preemption (optional)</h2>
+  <p style="margin-bottom:10px">Set <code>preemption_enabled,true</code> in <code>[SIMULATION]</code> to let the orchestrator interrupt an in-progress job for a more urgent one, layered on top of whichever scheduling policy is chosen. Only applies to single-step ("simple") jobs, on both sides — a job is never considered as an incoming candidate or as a victim if it has more than one step.</p>
+  <p style="margin-bottom:10px">The first tick a simple job is pending with no idle capable cell, it is evaluated exactly once: for each capable cell running an eligible in-progress job, the orchestrator projects when that job would naturally finish (from its observed ticks/unit so far, or the nominal cycle time if no unit has completed yet) and estimates the new job's completion if it waited for that cell. If waiting would meet the deadline on any candidate cell, nothing happens. Otherwise, it checks whether preempting the best candidate would meet the deadline; if so, it hands that cell to the new job immediately, and if not, it does nothing (waiting or preempting are both futile, so the job is left to run late).</p>
+  <p>Preempting a cell scraps only the victim's undelivered line-side buffer (an AMR carries it back to the warehouse as a background trip, logged as <code>parts_returned</code> — it doesn't gate the handover); everything the victim already delivered stays counted. The victim returns to the pending pool with its progress intact and is rescheduled normally afterward, same as any other pending job.</p>
+</section>
+
+<section class="card">
   <h2>Replenishment Policies</h2>
   <p style="margin-bottom:10px"><strong>UnitsLeft,v.</strong> A station requests more parts when its line-side buffer has <code>v</code> or fewer units remaining. <code>UnitsLeft,0</code> is the fully reactive baseline: it only asks once the buffer is empty.</p>
   <p style="margin-bottom:10px"><strong>PercentLeft,p.</strong> Requests when the buffer has <code>p%</code> or less of its capacity remaining.</p>
@@ -38,6 +45,7 @@
       <tr><td class="mono">max_ticks</td><td>Hard stop tick count. Max: 50,000.</td></tr>
       <tr><td class="mono">scheduling_policy</td><td><code>FIFO</code> or <code>EDD</code>.</td></tr>
       <tr><td class="mono">replenishment_policy</td><td>Three CSV fields: policy name and its value, e.g. <code>replenishment_policy,PredictedOut,10</code>.</td></tr>
+      <tr><td class="mono">preemption_enabled</td><td>Optional, <code>true</code> or <code>false</code>. Default <code>false</code>. See Preemption below.</td></tr>
     </tbody>
   </table>
 
@@ -70,7 +78,8 @@
       <tr><td>Total lateness</td><td>Sum over jobs of <code>max(0, completion_tick − deadline_tick)</code>. Unfinished jobs use <code>max_ticks</code> as their completion tick.</td></tr>
       <tr><td>Total starvation ticks</td><td>Sum over stations of ticks spent waiting for parts (Starving state).</td></tr>
       <tr><td>Total blocked ticks</td><td>Sum over cells of ticks with zero stations Working, split by reason (starved vs. output buffer full).</td></tr>
-      <tr><td>AMR trips</td><td>Count of dispatched delivery and pickup trips.</td></tr>
+      <tr><td>AMR trips</td><td>Count of dispatched delivery, pickup, and (if preemption fired) return trips.</td></tr>
+      <tr><td>Preemptions</td><td>Count of jobs interrupted to hand their cell to a more urgent one.</td></tr>
       <tr><td>Utilization</td><td>Working/Running/busy ticks divided by makespan, per station/cell/AMR.</td></tr>
     </tbody>
   </table>
@@ -105,6 +114,7 @@
       <tr><td class="mono">c1_reactive.csv / c2_predictive.csv</td><td>Predictive replenishment beats reactive when lead time is long relative to consumption.</td><td><code>UnitsLeft,0</code> → <code>PredictedOut,2</code>.</td></tr>
       <tr><td class="mono">d1_fifo.csv / d2_edd.csv</td><td>Deadline-aware scheduling beats FIFO on total lateness.</td><td><code>FIFO</code> → <code>EDD</code>.</td></tr>
       <tr><td class="mono">e1_unstaged.csv / e2_staged.csv</td><td>A high enough dependency threshold keeps a job out of the race for its cell until an unrelated job takes it first, giving the producer time to build a real buffer and eliminating starvation.</td><td>JobB's <code>min_available</code>: 0 → 3.</td></tr>
+      <tr><td class="mono">f1_no_preemption.csv / f2_preemption.csv</td><td>Preemption saves a late-arriving, tight-deadline job without costing the displaced job its own (more relaxed) deadline.</td><td><code>preemption_enabled</code>: false → true.</td></tr>
     </tbody>
   </table>
 </section>

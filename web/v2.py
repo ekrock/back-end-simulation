@@ -40,6 +40,8 @@ SCENARIOS = [
     ("d2_edd.csv", "P0-D: EDD scheduling meets the same deadline."),
     ("e1_unstaged.csv", "E baseline: an under-buffered dependent job starves repeatedly."),
     ("e2_staged.csv", "E: staging an unrelated job first lets the dependency build a real buffer."),
+    ("f1_no_preemption.csv", "F baseline: a late-arriving, tight-deadline job misses it waiting its turn."),
+    ("f2_preemption.csv", "F: preemption interrupts the in-progress job so the urgent one hits its deadline."),
 ]
 
 _SCENARIO_CODE_RE = re.compile(r"^([a-zA-Z]+)(\d+)")
@@ -137,7 +139,8 @@ def _results_to_csv(results: dict) -> str:
     for key in ("makespan", "termination_reason", "total_lateness", "jobs_late", "jobs_unfinished",
                 "total_starvation_ticks", "total_blocked_ticks", "total_blocked_ticks_starved",
                 "total_blocked_ticks_output_full", "total_setup_ticks", "total_draining_ticks",
-                "amr_trips_total", "amr_trips_delivery", "amr_trips_pickup", "fleet_cost",
+                "amr_trips_total", "amr_trips_delivery", "amr_trips_pickup", "amr_trips_return",
+                "total_preemptions", "fleet_cost",
                 "avg_cell_utilization", "avg_station_utilization", "avg_amr_utilization"):
         writer.writerow([key, results[key]])
     writer.writerow([])
@@ -145,11 +148,11 @@ def _results_to_csv(results: dict) -> str:
     writer.writerow(["[PER_JOB]"])
     writer.writerow(["name", "cell", "arrival_tick", "assigned_tick", "begin_tick",
                       "complete_at_cell_tick", "completion_tick", "deadline_tick",
-                      "lateness", "unfinished", "avg_unit_cycle_ticks"])
+                      "lateness", "unfinished", "avg_unit_cycle_ticks", "times_preempted"])
     for j in results["jobs"]:
         writer.writerow([j["name"], j["cell"], j["arrival_tick"], j["assigned_tick"], j["begin_tick"],
                           j["complete_at_cell_tick"], j["completion_tick"], j["deadline_tick"],
-                          j["lateness"], j["unfinished"], j["avg_unit_cycle_ticks"]])
+                          j["lateness"], j["unfinished"], j["avg_unit_cycle_ticks"], j["times_preempted"]])
     writer.writerow([])
 
     writer.writerow(["[CELL_UTILIZATION]"])

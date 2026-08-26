@@ -9,6 +9,7 @@ from simulation_v2.scheduling import run_scheduling
 class FakeSimulationConfig:
     def __init__(self, policy):
         self.scheduling_policy = policy
+        self.preemption_enabled = False
 
 
 class FakeConfig:

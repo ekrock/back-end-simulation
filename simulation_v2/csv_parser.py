@@ -82,11 +82,19 @@ def parse_csv(text: str) -> SimConfigV2:
     if max_ticks > _MAX_TICKS:
         raise ParseError(f"max_ticks exceeds limit of {_MAX_TICKS:,}")
 
+    preemption_enabled = False
+    if "preemption_enabled" in sim_map:
+        raw_val = sim_map["preemption_enabled"].strip().lower()
+        if raw_val not in ("true", "false"):
+            raise ParseError(f"[SIMULATION] preemption_enabled must be 'true' or 'false', got '{raw_val}'")
+        preemption_enabled = raw_val == "true"
+
     simulation = SimulationConfigV2(
         name=name, description=description, max_ticks=max_ticks,
         scheduling_policy=scheduling_policy,
         replenishment_policy=replenishment_policy,
         replenishment_value=replenishment_value,
+        preemption_enabled=preemption_enabled,
     )
 
     # ── [AMR_TYPES] ───────────────────────────────────────────────────────

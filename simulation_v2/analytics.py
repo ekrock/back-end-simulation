@@ -20,6 +20,7 @@ def compute(log_path: str, sim_result: dict) -> dict:
     fleet_cost = sum(a["cost_dollars"] for a in amrs)
     jobs_late = sum(1 for j in jobs if j["lateness"] > 0)
     jobs_unfinished = sum(1 for j in jobs if j["unfinished"])
+    total_preemptions = sum(j["times_preempted"] for j in jobs)
 
     ran_cells = [c for c in cells if c["running_ticks"] > 0]
     cell_utilization = {c["name"]: _pct(c["running_ticks"], makespan) for c in cells}
@@ -51,10 +52,12 @@ def compute(log_path: str, sim_result: dict) -> dict:
         "total_draining_ticks": total_draining_ticks,
         "amr_trips_delivery": trip_counts["delivery"],
         "amr_trips_pickup": trip_counts["pickup"],
-        "amr_trips_total": trip_counts["delivery"] + trip_counts["pickup"],
+        "amr_trips_return": trip_counts["return"],
+        "amr_trips_total": trip_counts["delivery"] + trip_counts["pickup"] + trip_counts["return"],
         "fleet_cost": fleet_cost,
         "jobs_late": jobs_late,
         "jobs_unfinished": jobs_unfinished,
+        "total_preemptions": total_preemptions,
         "jobs": jobs,
         "cells": cells,
         "cell_utilization": cell_utilization,
@@ -73,7 +76,7 @@ def _pct(numerator: int, denominator: int) -> float:
 
 
 def _count_trips(log_path: str) -> dict:
-    counts = {"delivery": 0, "pickup": 0}
+    counts = {"delivery": 0, "pickup": 0, "return": 0}
     with open(log_path) as f:
         for line in f:
             line = line.strip()
