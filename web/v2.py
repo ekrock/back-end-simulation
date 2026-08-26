@@ -220,7 +220,7 @@ def v2_index(username: str):
 
 
 @v2_bp.route("/compare")
-@require_auth
+@require_auth(auto_demo=True)
 def v2_compare(username: str):
     ids = [r for r in request.args.get("runs", "").split(",") if r]
     rows = []

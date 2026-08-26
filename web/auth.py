@@ -37,14 +37,27 @@ def _request_auth():
     )
 
 
-def require_auth(f):
-    @functools.wraps(f)
-    def decorated(*args, **kwargs):
-        auth = request.authorization
-        if auth and _check_auth(auth.username, auth.password):
-            return f(*args, **kwargs, username=auth.username)
-        username = session.get("username")
-        if username:
-            return f(*args, **kwargs, username=username)
-        return _request_auth()
-    return decorated
+def require_auth(f=None, *, auto_demo=False):
+    """auto_demo=True silently logs a session-less visitor in as the demo
+    user (same env-stored, no-real-secret credentials as /demo and
+    /demo/v2) instead of showing a login prompt -- for the few read-only
+    pages meant to work as cold shareable links (e.g. a Compare Runs URL
+    sent to a hiring manager who won't have visited /demo/v2 first)."""
+    def decorator(view):
+        @functools.wraps(view)
+        def decorated(*args, **kwargs):
+            auth = request.authorization
+            if auth and _check_auth(auth.username, auth.password):
+                return view(*args, **kwargs, username=auth.username)
+            username = session.get("username")
+            if username:
+                return view(*args, **kwargs, username=username)
+            if auto_demo:
+                demo_username = os.environ.get("DEMO_USERNAME", "")
+                session["username"] = demo_username
+                return view(*args, **kwargs, username=demo_username)
+            return _request_auth()
+        return decorated
+    if f is not None:
+        return decorator(f)
+    return decorator
