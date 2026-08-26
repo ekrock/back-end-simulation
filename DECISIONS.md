@@ -139,3 +139,15 @@ Section 17's definition of done requires every Section 12.7 event type to appear
 
 **P1-3 compare page: self-contained run picker instead of a separate index-page form** (2026-08-25)
 `/v2/compare` shows the full run list with checkboxes and the comparison table/charts on the same page (checking boxes and resubmitting a GET to itself), rather than putting checkboxes on `/v2/` and a separate results-only page at `/v2/compare`. One page instead of coordinating two forms across routes; matches the PRD's own `?runs=<id>,<id>,...` URL shape.
+
+---
+
+## Post-deadline enhancements (2026-08-26): preemption, splitting, intermediate-part staging
+
+User requested three further V2 features with a same-day 3pm deadline: (1) job preemption, (2) job splitting across cells, (3) an intermediate-part quantity threshold. Given the 4-hour window, agreed priority order was 3 → 1 → 2, since splitting breaks the one-job-one-cell invariant used throughout scheduling/engine/analytics today and is the highest-risk of the three; preemption's feasibility math reuses EDD's existing `estimated_completion` formula but needs new "interrupt and return parts" mechanics; the intermediate-part threshold builds directly on already-shipped P1-2 machinery.
+
+**Feature 3 shipped: `[JOB_STEPS]` gets an optional 6th column, `min_available`** (2026-08-26)
+When set, replaces the P1-2 default ("schedulable only once every producing job has delivered all its units") with a quantity gate: schedulable once the store holds `min_available` units of that intermediate part, even while the producer is still running. Omitting the column preserves the exact legacy behavior -- no regression to the P1-2 tests/scenarios already shipped. `min_available` is rejected at parse time if set on a step whose part is external (only meaningful for intermediate parts). `store` is now threaded through `scheduling.run_scheduling` / `_schedule_fifo` / `_schedule_edd` / `_is_pending` / `_dependencies_satisfied` to make this check.
+
+**E1/E2 demo pair: the differentiator is JobC's `capable_cells`, not the threshold value** (2026-08-26)
+Original plan was to vary `min_available` between the two files (low vs. high) to show the threshold mechanism directly. In practice this doesn't work: with any threshold > 0, the dependent job (JobB) can never win an empty store at tick 0 regardless of file order, since it isn't even eligible until the store holds enough units -- so an unrelated job with no dependency (JobC) always wins the race for that cell first, in both files, making them behave identically. The actual lever that produces the demonstrated contrast is whether JobC is capable of the *same* cell JobB needs (`e2_staged.csv`, where JobC occupies it first and gives the producer time to build a buffer) versus a *different* cell (`e1_unstaged.csv`, where JobB wins that cell almost immediately with minimal buffer and starves). The `min_available` threshold (set to 1 in both files) still does real work: it's what allows JobB onto the cell early in the unstaged file, and it's already satisfied well before the staged file's actual gating factor -- cell availability -- clears.

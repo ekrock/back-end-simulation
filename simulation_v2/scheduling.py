@@ -8,19 +8,26 @@ def _effective_ticks(raw_ticks: int, speed_factor: float) -> int:
     return math.ceil(raw_ticks * speed_factor)
 
 
-def _dependencies_satisfied(job, producer_by_product: dict) -> bool:
-    """P1-2: a job depending on another job's product (an intermediate part)
-    is only schedulable once every producing job has delivered all its units."""
+def _dependencies_satisfied(job, producer_by_product: dict, store: dict) -> bool:
+    """P1-2: a job depending on another job's product (an intermediate part) is
+    schedulable once the store holds at least step.min_available units of that
+    part, if set; otherwise (legacy default) only once the producing job has
+    delivered all of its units."""
     for step in job.steps:
         producer = producer_by_product.get(step.part_name)
-        if producer is not None and producer.completion_tick is None:
+        if producer is None:
+            continue
+        if step.min_available is not None:
+            if store.get(step.part_name, 0) < step.min_available:
+                return False
+        elif producer.completion_tick is None:
             return False
     return True
 
 
-def _is_pending(job, tick, producer_by_product):
+def _is_pending(job, tick, producer_by_product, store):
     return (job.assigned_cell is None and job.arrival_tick <= tick
-            and _dependencies_satisfied(job, producer_by_product))
+            and _dependencies_satisfied(job, producer_by_product, store))
 
 
 def _assign(job, cell, tick, request_queue, log, policy, estimated_completion=None):
@@ -61,9 +68,9 @@ def _assign(job, cell, tick, request_queue, log, policy, estimated_completion=No
             part=step.part_name, units_remaining=0, kind="setup")
 
 
-def _schedule_fifo(jobs, cells, tick, request_queue, log, producer_by_product):
+def _schedule_fifo(jobs, cells, tick, request_queue, log, producer_by_product, store):
     for job in jobs:  # [JOBS] file order
-        if not _is_pending(job, tick, producer_by_product):
+        if not _is_pending(job, tick, producer_by_product, store):
             continue
         capable = set(job.capable_cells)
         for cell in cells:  # [CELLS] file order
@@ -72,10 +79,10 @@ def _schedule_fifo(jobs, cells, tick, request_queue, log, producer_by_product):
                 break
 
 
-def _schedule_edd(jobs, cells, tick, min_amr_speed, request_queue, log, producer_by_product):
+def _schedule_edd(jobs, cells, tick, min_amr_speed, request_queue, log, producer_by_product, store):
     cells_by_name = {c.name: c for c in cells}
     cell_order = {c.name: i for i, c in enumerate(cells)}
-    pending = [j for j in jobs if _is_pending(j, tick, producer_by_product)]
+    pending = [j for j in jobs if _is_pending(j, tick, producer_by_product, store)]
     pending.sort(key=lambda j: (j.deadline_tick, j.file_index))
 
     for job in pending:
@@ -97,12 +104,12 @@ def _schedule_edd(jobs, cells, tick, min_amr_speed, request_queue, log, producer
         _assign(job, best_cell, tick, request_queue, log, policy="EDD", estimated_completion=best_est)
 
 
-def run_scheduling(config, jobs, cells, tick, min_amr_speed, request_queue, log, producer_by_product):
+def run_scheduling(config, jobs, cells, tick, min_amr_speed, request_queue, log, producer_by_product, store):
     if not any(c.state == "Idle" for c in cells):
         return
-    if not any(_is_pending(j, tick, producer_by_product) for j in jobs):
+    if not any(_is_pending(j, tick, producer_by_product, store) for j in jobs):
         return
     if config.simulation.scheduling_policy == "FIFO":
-        _schedule_fifo(jobs, cells, tick, request_queue, log, producer_by_product)
+        _schedule_fifo(jobs, cells, tick, request_queue, log, producer_by_product, store)
     else:
-        _schedule_edd(jobs, cells, tick, min_amr_speed, request_queue, log, producer_by_product)
+        _schedule_edd(jobs, cells, tick, min_amr_speed, request_queue, log, producer_by_product, store)

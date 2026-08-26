@@ -61,20 +61,22 @@ Section-based, like V1, with `#`-comment lines and blank-line skipping:
 - `[CELLS]` — cell_name, distance_meters, speed_factor, num_stations, lineside_buffer_size, output_buffer_size
 - `[PARTS]` — external part names (infinite supply)
 - `[JOBS]` — job_name, product_name, units, arrival_tick, deadline_tick, capable_cells (`|`-separated)
-- `[JOB_STEPS]` — job_name, station_number, part_name, parts_per_unit, ticks. `part_name` may be an external part or another job's `product_name` (an intermediate part — that job becomes schedulable only once every job producing it has delivered all its units).
+- `[JOB_STEPS]` — job_name, station_number, part_name, parts_per_unit, ticks, optional min_available. `part_name` may be an external part or another job's `product_name` (an intermediate part). By default that job becomes schedulable only once every job producing it has delivered all its units; the optional `min_available` column replaces that with a quantity threshold -- schedulable once the store holds at least that many units, even while the producer is still running.
 
 Full field reference, policy definitions, and metric formulas: `/v2/help`.
 
 ### Scenario files and measured results
 
-Each pair in `static/v2/scenarios/` demonstrates one P0 claim and is asserted by `tests/test_p0_claims.py`:
+Each pair in `static/v2/scenarios/` demonstrates one claim, most asserted by `tests/test_p0_claims.py` (the four P0 claims) or a dedicated test file (e.g. `tests/test_e_claim.py`):
 
 | Pair | Claim | Measured result |
 |---|---|---|
 | `a1_one_cell.csv` / `a2_two_cells.csv` | Adding a cell reduces makespan via parallelization | 430 → 216 ticks |
 | `b1_one_amr.csv` / `b2_two_amrs.csv` | Adding an AMR reduces starvation and makespan | starvation 8,489 → 4,141 ticks; makespan 9,001 → 4,672 ticks |
+| `b3`/`b4`/`b5` (three/four/five AMRs) | Marginal-returns extension of the b1/b2 series | makespan 3,472 / 2,872 / 2,401 ticks |
 | `c1_reactive.csv` / `c2_predictive.csv` | Predictive replenishment beats reactive when AMR lead time is long relative to consumption | starvation 284 → 0 ticks; makespan 2,167 → 1,883 ticks (costs one extra AMR trip, 10 → 11) |
 | `d1_fifo.csv` / `d2_edd.csv` | Deadline-aware (EDD) scheduling beats FIFO on total lateness | total lateness 119 → 0 ticks |
+| `e1_unstaged.csv` / `e2_staged.csv` | Staging an unrelated job ahead of a dependent job lets the producer build a real buffer before consumption starts, eliminating starvation | starvation 46 → 0 ticks; makespan 219 → 152 ticks; Line2 utilization 14% → 87% |
 
 ### Tests
 
@@ -82,7 +84,7 @@ Each pair in `static/v2/scenarios/` demonstrates one P0 claim and is asserted by
 pytest tests/
 ```
 
-43 tests: CSV parser validation, FIFO/EDD placement, replenishment policies, hand-computed cell-pipeline mechanics (the Starving/Holding/hand-off state machine), intermediate-part dependencies, engine determinism, and the four P0 claims above.
+47 tests: CSV parser validation, FIFO/EDD placement, replenishment policies, hand-computed cell-pipeline mechanics (the Starving/Holding/hand-off state machine), intermediate-part dependencies (including the min_available threshold), engine determinism, the four P0 claims, and the E claim above.
 
 ### Deploy / update
 

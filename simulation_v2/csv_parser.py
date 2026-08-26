@@ -216,9 +216,23 @@ def parse_csv(text: str) -> SimConfigV2:
         if part_name == jobs_by_name[job_name].product_name:
             raise ParseError(f"[JOB_STEPS] '{job_name}' cannot consume its own product "
                               f"'{part_name}' as a part")
+
+        # Optional 6th column: schedule once the store holds at least this many
+        # units of an intermediate part, instead of waiting for full producer
+        # completion. Only meaningful for intermediate parts (finite, store-tracked).
+        min_available = None
+        if len(row) >= 6 and row[5] != "":
+            if part_name not in product_names:
+                raise ParseError(f"[JOB_STEPS] '{job_name}' step sets min_available on "
+                                  f"'{part_name}', but that is an external part (always "
+                                  f"available) -- min_available only applies to intermediate parts")
+            min_available = _to_int(row[5], f"[JOB_STEPS] min_available for '{job_name}'")
+            if min_available < 0:
+                raise ParseError(f"[JOB_STEPS] min_available for '{job_name}' must be >= 0")
+
         jobs_by_name[job_name].steps.append(
             JobStepDef(station_number=station_number, part_name=part_name,
-                       parts_per_unit=parts_per_unit, ticks=ticks)
+                       parts_per_unit=parts_per_unit, ticks=ticks, min_available=min_available)
         )
 
     for job in jobs:

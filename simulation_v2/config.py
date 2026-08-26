@@ -1,5 +1,6 @@
 """Dataclasses for the V2 (multi-cell orchestration) simulation config."""
 from dataclasses import dataclass, field
+from typing import Optional
 
 
 @dataclass
@@ -42,6 +43,9 @@ class JobStepDef:
     part_name: str
     parts_per_unit: int
     ticks: int
+    min_available: Optional[int] = None  # P1-2 threshold gate: None = require full producer
+                                # completion (legacy behavior); an int = schedulable
+                                # once the store holds at least this many units.
 
 
 @dataclass

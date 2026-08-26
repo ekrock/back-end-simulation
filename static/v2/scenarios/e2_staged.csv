@@ -1,0 +1,36 @@
+[SIMULATION]
+name,E2 Staged Dependent Job
+description,Same three jobs as e1_unstaged.csv -- only JobC's capable_cells changed from CellA to CellB. JobC (unrelated to JobA/JobB) occupies Line2 first, giving JobA time to build a real subassembly buffer; JobB is only scheduled on Line2 once JobC completes, by which point it never starves. Result: makespan 219 -> 152 ticks, starvation 46 -> 0 ticks, Line2 utilization 14% -> 87%.
+max_ticks,3000
+scheduling_policy,FIFO
+replenishment_policy,UnitsLeft,3
+
+[AMR_TYPES]
+type_name,units_carried,speed_m_per_s,cost_dollars
+Cart,5,5.0,3000
+
+[AMRS]
+type_name,count
+Cart,2
+
+[CELLS]
+cell_name,distance_meters,speed_factor,num_stations,lineside_buffer_size,output_buffer_size
+CellA,10,1.0,1,10,3
+CellB,10,1.0,1,10,10
+
+[PARTS]
+part_name
+RawMaterial
+Filler
+
+[JOBS]
+job_name,product_name,units,arrival_tick,deadline_tick,capable_cells
+JobA,SubAssembly,10,0,5000,CellA
+JobB,FinalProduct,10,0,5000,CellB
+JobC,Widget,10,0,5000,CellB
+
+[JOB_STEPS]
+job_name,station_number,part_name,parts_per_unit,ticks
+JobA,1,RawMaterial,1,10
+JobB,1,SubAssembly,1,3,1
+JobC,1,Filler,1,10

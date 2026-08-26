@@ -38,6 +38,8 @@ SCENARIOS = [
     ("c2_predictive.csv", "P0-C: predictive replenishment arrives before the buffer empties."),
     ("d1_fifo.csv", "P0-D baseline: FIFO scheduling misses a tight deadline."),
     ("d2_edd.csv", "P0-D: EDD scheduling meets the same deadline."),
+    ("e1_unstaged.csv", "E baseline: an under-buffered dependent job starves repeatedly."),
+    ("e2_staged.csv", "E: staging an unrelated job first lets the dependency build a real buffer."),
 ]
 
 _SCENARIO_CODE_RE = re.compile(r"^([a-zA-Z]+)(\d+)")

@@ -74,3 +74,45 @@ def test_unknown_intermediate_part_still_rejected():
         assert False, "expected ParseError"
     except ParseError as e:
         assert "not listed in" in str(e)
+
+
+def test_min_available_lets_dependent_job_start_before_producer_finishes(tmp_path):
+    # CellA's output_buffer_size dropped to 1 so JobA's units reach the store
+    # one at a time instead of batching all 5 into a single pickup trip --
+    # otherwise the store would jump straight from 0 to 5 and never pause at
+    # the threshold long enough to prove it's gating on a partial quantity.
+    threshold_config = (
+        CONFIG.replace("JobB,1,SubAssembly,1,10", "JobB,1,SubAssembly,1,10,2")
+              .replace("CellA,10,1.0,1,10,10", "CellA,10,1.0,1,10,1")
+    )
+    config = parse_csv(threshold_config)
+    log_path = str(tmp_path / "run.jsonl")
+    sim_result = run_simulation(config, log_path, run_id="test")
+
+    jobs_by_name = {j["name"]: j for j in sim_result["jobs"]}
+    job_a, job_b = jobs_by_name["JobA"], jobs_by_name["JobB"]
+
+    assert job_a["completion_tick"] is not None
+    assert job_b["completion_tick"] is not None
+    # With a threshold of 2 (well under JobA's 5 units), JobB should start
+    # well before JobA finishes all 5 units -- the opposite of the legacy
+    # full-completion test above.
+    assert job_b["assigned_tick"] < job_a["complete_at_cell_tick"]
+
+
+def test_min_available_on_external_part_rejected():
+    bad_config = CONFIG.replace("JobA,1,RawMaterial,1,10", "JobA,1,RawMaterial,1,10,2")
+    try:
+        parse_csv(bad_config)
+        assert False, "expected ParseError"
+    except ParseError as e:
+        assert "external part" in str(e)
+
+
+def test_min_available_negative_rejected():
+    bad_config = CONFIG.replace("JobB,1,SubAssembly,1,10", "JobB,1,SubAssembly,1,10,-1")
+    try:
+        parse_csv(bad_config)
+        assert False, "expected ParseError"
+    except ParseError as e:
+        assert "min_available" in str(e)

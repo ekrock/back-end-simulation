@@ -77,7 +77,7 @@ def run_simulation(config, log_path: str, run_id: str, start_time=None) -> dict:
 
         # ── STEP 4 Scheduling ─────────────────────────────────────────────
         scheduling.run_scheduling(config, jobs, cells, tick, min_amr_speed, request_queue, log,
-                                   producer_by_product)
+                                   producer_by_product, store)
 
         # ── STEP 5 Replenishment ──────────────────────────────────────────
         run_replenishment(config, cells, jobs_by_name, tick, min_amr_speed, request_queue, log)
