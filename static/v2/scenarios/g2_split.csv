@@ -1,0 +1,33 @@
+[SIMULATION]
+name,G2 Job Splitting Enabled
+description,Same 30-unit job and three idle cells as g1_no_split.csv -- only job_splitting_enabled differs (false -> true). One cell alone would take ~310 ticks (deadline 150); the orchestrator projects that and splits the job across all 3 idle cells (10 units each), finishing comfortably on time. Result: lateness 160 -> 0 ticks.
+max_ticks,2000
+scheduling_policy,FIFO
+replenishment_policy,UnitsLeft,5
+job_splitting_enabled,true
+
+[AMR_TYPES]
+type_name,units_carried,speed_m_per_s,cost_dollars
+Cart,10,5.0,3000
+
+[AMRS]
+type_name,count
+Cart,6
+
+[CELLS]
+cell_name,distance_meters,speed_factor,num_stations,lineside_buffer_size,output_buffer_size
+CellA,10,1.0,1,20,20
+CellB,10,1.0,1,20,20
+CellC,10,1.0,1,20,20
+
+[PARTS]
+part_name
+RawMaterial
+
+[JOBS]
+job_name,product_name,units,arrival_tick,deadline_tick,capable_cells
+JobBig,BigProduct,30,0,150,CellA|CellB|CellC
+
+[JOB_STEPS]
+job_name,station_number,part_name,parts_per_unit,ticks
+JobBig,1,RawMaterial,1,10

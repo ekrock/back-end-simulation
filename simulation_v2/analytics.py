@@ -21,6 +21,7 @@ def compute(log_path: str, sim_result: dict) -> dict:
     jobs_late = sum(1 for j in jobs if j["lateness"] > 0)
     jobs_unfinished = sum(1 for j in jobs if j["unfinished"])
     total_preemptions = sum(j["times_preempted"] for j in jobs)
+    total_job_splits = sum(1 for j in jobs if j["shard_count"] > 0)
 
     ran_cells = [c for c in cells if c["running_ticks"] > 0]
     cell_utilization = {c["name"]: _pct(c["running_ticks"], makespan) for c in cells}
@@ -58,6 +59,7 @@ def compute(log_path: str, sim_result: dict) -> dict:
         "jobs_late": jobs_late,
         "jobs_unfinished": jobs_unfinished,
         "total_preemptions": total_preemptions,
+        "total_job_splits": total_job_splits,
         "jobs": jobs,
         "cells": cells,
         "cell_utilization": cell_utilization,

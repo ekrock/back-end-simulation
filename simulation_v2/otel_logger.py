@@ -18,6 +18,7 @@ _SPAN_KIND = {
     "job_arrived": "job",
     "job_assigned": "job",
     "job_complete": "job",
+    "job_split": "job",
     "part_request": "cell",
     "pickup_request": "cell",
     "job_begin": "cell",

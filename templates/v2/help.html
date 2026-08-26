@@ -26,6 +26,13 @@
 </section>
 
 <section class="card">
+  <h2>Job Splitting (optional)</h2>
+  <p style="margin-bottom:10px">Set <code>job_splitting_enabled,true</code> in <code>[SIMULATION]</code> to let a single-step ("simple") job run across several cells at once instead of just one. The first tick such a job is pending with at least one idle capable cell, it is evaluated exactly once: the orchestrator estimates completion on the best single idle cell (same formula EDD and preemption use). If that meets the deadline, nothing changes -- the job runs on one cell as usual.</p>
+  <p style="margin-bottom:10px">If one cell isn't enough, it tries splitting across 2, then 3, and so on, up to however many capable cells are currently idle -- each split gets an even share of the units -- and stops at the smallest number of cells whose worst-case completion meets the deadline. If even using every idle cell still wouldn't make it, it uses all of them anyway (best effort).</p>
+  <p>A split job is internally represented as hidden, single-cell "shards" (e.g. <code>BigJob#1</code>, <code>BigJob#2</code>) -- ordinary jobs in every respect, visible in the raw event log, but rolled up into a single row on the results page and in <code>results.json</code> (cell shows every cell used; completion is the latest shard to finish).</p>
+</section>
+
+<section class="card">
   <h2>Replenishment Policies</h2>
   <p style="margin-bottom:10px"><strong>UnitsLeft,v.</strong> A station requests more parts when its line-side buffer has <code>v</code> or fewer units remaining. <code>UnitsLeft,0</code> is the fully reactive baseline: it only asks once the buffer is empty.</p>
   <p style="margin-bottom:10px"><strong>PercentLeft,p.</strong> Requests when the buffer has <code>p%</code> or less of its capacity remaining.</p>
@@ -46,6 +53,7 @@
       <tr><td class="mono">scheduling_policy</td><td><code>FIFO</code> or <code>EDD</code>.</td></tr>
       <tr><td class="mono">replenishment_policy</td><td>Three CSV fields: policy name and its value, e.g. <code>replenishment_policy,PredictedOut,10</code>.</td></tr>
       <tr><td class="mono">preemption_enabled</td><td>Optional, <code>true</code> or <code>false</code>. Default <code>false</code>. See Preemption below.</td></tr>
+      <tr><td class="mono">job_splitting_enabled</td><td>Optional, <code>true</code> or <code>false</code>. Default <code>false</code>. See Job Splitting below.</td></tr>
     </tbody>
   </table>
 
@@ -80,6 +88,7 @@
       <tr><td>Total blocked ticks</td><td>Sum over cells of ticks with zero stations Working, split by reason (starved vs. output buffer full).</td></tr>
       <tr><td>AMR trips</td><td>Count of dispatched delivery, pickup, and (if preemption fired) return trips.</td></tr>
       <tr><td>Preemptions</td><td>Count of jobs interrupted to hand their cell to a more urgent one.</td></tr>
+      <tr><td>Jobs split across cells</td><td>Count of jobs run as shards on more than one cell at once.</td></tr>
       <tr><td>Utilization</td><td>Working/Running/busy ticks divided by makespan, per station/cell/AMR.</td></tr>
     </tbody>
   </table>
@@ -115,6 +124,7 @@
       <tr><td class="mono">d1_fifo.csv / d2_edd.csv</td><td>Deadline-aware scheduling beats FIFO on total lateness.</td><td><code>FIFO</code> → <code>EDD</code>.</td></tr>
       <tr><td class="mono">e1_unstaged.csv / e2_staged.csv</td><td>A high enough dependency threshold keeps a job out of the race for its cell until an unrelated job takes it first, giving the producer time to build a real buffer and eliminating starvation.</td><td>JobB's <code>min_available</code>: 0 → 3.</td></tr>
       <tr><td class="mono">f1_no_preemption.csv / f2_preemption.csv</td><td>Preemption saves a late-arriving, tight-deadline job without costing the displaced job its own (more relaxed) deadline.</td><td><code>preemption_enabled</code>: false → true.</td></tr>
+      <tr><td class="mono">g1_no_split.csv / g2_split.csv</td><td>A job that can't finish on one cell by its deadline hits it once split across enough idle cells.</td><td><code>job_splitting_enabled</code>: false → true.</td></tr>
     </tbody>
   </table>
 </section>

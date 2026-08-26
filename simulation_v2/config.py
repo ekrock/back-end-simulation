@@ -12,6 +12,7 @@ class SimulationConfigV2:
     replenishment_policy: str       # "UnitsLeft" | "PercentLeft" | "PredictedOut"
     replenishment_value: int
     preemption_enabled: bool = False
+    job_splitting_enabled: bool = False
 
 
 @dataclass

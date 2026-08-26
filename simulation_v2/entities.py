@@ -68,6 +68,9 @@ class Job:
     cycle_ticks_list: list = field(default_factory=list)
     preemption_evaluated: bool = False  # a preemptable job is only ever considered once
     times_preempted: int = 0
+    split_evaluated: bool = False    # a splittable job is only ever considered once
+    is_split: bool = False           # True: this job is a hidden parent, never itself assigned
+    shard_names: list = field(default_factory=list)  # this parent's single-cell shard Jobs
 
 
 @dataclass

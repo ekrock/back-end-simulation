@@ -1,7 +1,7 @@
 """Scheduling policies: FIFO and EDD (Section 12.2), plus optional preemption."""
 import math
 
-from simulation_v2.entities import TransportRequest
+from simulation_v2.entities import Job, TransportRequest
 
 
 def _effective_ticks(raw_ticks: int, speed_factor: float) -> int:
@@ -26,19 +26,23 @@ def _dependencies_satisfied(job, producer_by_product: dict, store: dict) -> bool
 
 
 def _is_pending(job, tick, producer_by_product, store):
-    return (job.assigned_cell is None and job.arrival_tick <= tick
+    return (job.assigned_cell is None and not job.is_split and job.arrival_tick <= tick
             and _dependencies_satisfied(job, producer_by_product, store))
 
 
-def _estimated_completion(job, cell, start_tick, min_amr_speed):
+def _estimated_completion(job, cell, start_tick, min_amr_speed, units=None):
     """EDD-style projection (Section 12.2): setup lead time, pipeline fill,
     per-unit cycle time, and a final product pickup trip, starting from
-    start_tick. Reused as-is by preemption's own feasibility check."""
+    start_tick. Reused as-is by preemption's and job-splitting's own
+    feasibility checks. `units` overrides job.units, for sizing a hypothetical
+    shard before it exists as its own Job."""
+    if units is None:
+        units = job.units
     one_way = math.ceil(cell.distance_meters / min_amr_speed)
     setup_estimate = 2 * one_way
     pipeline_fill = sum(_effective_ticks(s.ticks, cell.speed_factor) for s in job.steps)
     cycle = max(_effective_ticks(s.ticks, cell.speed_factor) for s in job.steps)
-    return start_tick + setup_estimate + pipeline_fill + (job.units - 1) * cycle + 2 * one_way
+    return start_tick + setup_estimate + pipeline_fill + (units - 1) * cycle + 2 * one_way
 
 
 def _assign(job, cell, tick, request_queue, log, policy, estimated_completion=None):
@@ -194,7 +198,81 @@ def run_preemption(jobs, cells, tick, min_amr_speed, request_queue, log, produce
         _preempt(job, best_cell, best_victim, tick, request_queue, log, best_preempt_est)
 
 
-def run_scheduling(config, jobs, cells, tick, min_amr_speed, request_queue, log, producer_by_product, store):
+# ── Job splitting (optional) ─────────────────────────────────────────────────
+
+def _split_job(job, chosen_cells, tick, min_amr_speed, request_queue, log, jobs, jobs_by_name):
+    """Hand `job`'s units to `chosen_cells` as hidden, single-cell shard jobs --
+    the parent is never itself assigned to anything. Reuses the normal
+    single-job-single-cell machinery unchanged; splitting is purely a
+    scheduling-time decision, invisible to everything downstream."""
+    n = len(chosen_cells)
+    base, remainder = divmod(job.units, n)
+    job.is_split = True
+
+    log("job_split", tick, job=job.name, shard_count=n, cells=[c.name for c in chosen_cells])
+
+    for i, cell in enumerate(chosen_cells):
+        shard_units = base + (1 if i < remainder else 0)
+        shard = Job(name=f"{job.name}#{i + 1}", product_name=job.product_name,
+                    units=shard_units, arrival_tick=job.arrival_tick,
+                    deadline_tick=job.deadline_tick, capable_cells=[cell.name],
+                    steps=job.steps, file_index=job.file_index)
+        jobs.append(shard)
+        jobs_by_name[shard.name] = shard
+        job.shard_names.append(shard.name)
+        est = _estimated_completion(job, cell, tick, min_amr_speed, units=shard_units)
+        _assign(shard, cell, tick, request_queue, log, policy="SPLIT", estimated_completion=est)
+
+
+def run_job_splitting(jobs, jobs_by_name, cells, tick, min_amr_speed, request_queue, log,
+                       producer_by_product, store):
+    cells_by_name = {c.name: c for c in cells}
+    cell_order = {c.name: i for i, c in enumerate(cells)}
+
+    candidates = [
+        j for j in jobs  # [JOBS] file order
+        if not j.split_evaluated and len(j.steps) == 1
+        and _is_pending(j, tick, producer_by_product, store)
+    ]
+
+    for job in candidates:
+        idle_capable = sorted(
+            (cells_by_name[c] for c in job.capable_cells
+             if cells_by_name.get(c) is not None and cells_by_name[c].state == "Idle"),
+            key=lambda c: cell_order[c.name],
+        )
+        if not idle_capable:
+            continue  # nothing available to evaluate against yet; try again once a cell frees
+        job.split_evaluated = True
+
+        best_single = min(_estimated_completion(job, c, tick, min_amr_speed) for c in idle_capable)
+        if best_single <= job.deadline_tick:
+            continue  # one cell is enough; let normal scheduling place it there
+
+        chosen_n = None
+        for n in range(2, len(idle_capable) + 1):
+            shard_units = math.ceil(job.units / n)
+            worst = max(_estimated_completion(job, c, tick, min_amr_speed, units=shard_units)
+                        for c in idle_capable[:n])
+            if worst <= job.deadline_tick:
+                chosen_n = n
+                break
+        if chosen_n is None:
+            chosen_n = len(idle_capable)  # best effort: use everything available
+
+        _split_job(job, idle_capable[:chosen_n], tick, min_amr_speed, request_queue, log,
+                   jobs, jobs_by_name)
+
+
+def run_scheduling(config, jobs, jobs_by_name, cells, tick, min_amr_speed, request_queue, log,
+                    producer_by_product, store):
+    if config.simulation.job_splitting_enabled:
+        # Must be the engine's own jobs_by_name (not a locally rebuilt copy):
+        # new shard jobs get added here and need to stay visible to the
+        # engine's cell-processing loop, which looks jobs up by name.
+        run_job_splitting(jobs, jobs_by_name, cells, tick, min_amr_speed, request_queue, log,
+                           producer_by_product, store)
+
     if any(c.state == "Idle" for c in cells) and any(
             _is_pending(j, tick, producer_by_product, store) for j in jobs):
         if config.simulation.scheduling_policy == "FIFO":

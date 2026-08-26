@@ -82,12 +82,8 @@ def parse_csv(text: str) -> SimConfigV2:
     if max_ticks > _MAX_TICKS:
         raise ParseError(f"max_ticks exceeds limit of {_MAX_TICKS:,}")
 
-    preemption_enabled = False
-    if "preemption_enabled" in sim_map:
-        raw_val = sim_map["preemption_enabled"].strip().lower()
-        if raw_val not in ("true", "false"):
-            raise ParseError(f"[SIMULATION] preemption_enabled must be 'true' or 'false', got '{raw_val}'")
-        preemption_enabled = raw_val == "true"
+    preemption_enabled = _bool_field(sim_map, "preemption_enabled")
+    job_splitting_enabled = _bool_field(sim_map, "job_splitting_enabled")
 
     simulation = SimulationConfigV2(
         name=name, description=description, max_ticks=max_ticks,
@@ -95,6 +91,7 @@ def parse_csv(text: str) -> SimConfigV2:
         replenishment_policy=replenishment_policy,
         replenishment_value=replenishment_value,
         preemption_enabled=preemption_enabled,
+        job_splitting_enabled=job_splitting_enabled,
     )
 
     # ── [AMR_TYPES] ───────────────────────────────────────────────────────
@@ -287,3 +284,12 @@ def _to_int(val: str, what: str) -> int:
         return int(val)
     except ValueError:
         raise ParseError(f"{what} must be an integer, got '{val}'")
+
+
+def _bool_field(sim_map: dict, key: str) -> bool:
+    if key not in sim_map:
+        return False
+    raw_val = sim_map[key].strip().lower()
+    if raw_val not in ("true", "false"):
+        raise ParseError(f"[SIMULATION] {key} must be 'true' or 'false', got '{raw_val}'")
+    return raw_val == "true"

@@ -89,6 +89,7 @@
             (delivery: {{ results.amr_trips_delivery }}, pickup: {{ results.amr_trips_pickup }}, return: {{ results.amr_trips_return }})</td></tr>
       <tr><td>Fleet cost</td><td class="num">${{ "{:,}".format(results.fleet_cost) }}</td></tr>
       <tr><td>Preemptions</td><td class="num">{{ results.total_preemptions }}</td></tr>
+      <tr><td>Jobs split across cells</td><td class="num">{{ results.total_job_splits }}</td></tr>
     </tbody>
   </table>
 </section>
@@ -99,7 +100,7 @@
     <thead>
       <tr><th>Job</th><th>Cell</th><th>Arrival</th><th>Assigned</th><th>Begin</th>
         <th>Complete at Cell</th><th>Completion</th><th>Deadline</th>
-        <th>Lateness</th><th>Late</th><th>Avg Unit Cycle Ticks</th><th>Times Preempted</th></tr>
+        <th>Lateness</th><th>Late</th><th>Avg Unit Cycle Ticks</th><th>Times Preempted</th><th>Split Into</th></tr>
     </thead>
     <tbody>
       {% for j in results.jobs %}
@@ -116,6 +117,7 @@
         <td>{{ "Late" if j.lateness > 0 else "On time" }}</td>
         <td class="num">{{ j.avg_unit_cycle_ticks if j.avg_unit_cycle_ticks is not none else "—" }}</td>
         <td class="num">{{ j.times_preempted }}</td>
+        <td class="num">{{ j.shard_count if j.shard_count > 0 else "—" }}</td>
       </tr>
       {% endfor %}
     </tbody>

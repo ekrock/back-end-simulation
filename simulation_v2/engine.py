@@ -56,7 +56,7 @@ def run_simulation(config, log_path: str, run_id: str, start_time=None) -> dict:
 
     while True:
         # ── STEP 1 Termination ──────────────────────────────────────────
-        all_complete = all(j.completion_tick is not None for j in jobs)
+        all_complete = _all_jobs_complete(jobs)
         all_amrs_idle = all(a.state == "Idle" for a in amrs)
         if all_complete and all_amrs_idle:
             termination_reason = "all_jobs_complete"
@@ -76,8 +76,8 @@ def run_simulation(config, log_path: str, run_id: str, start_time=None) -> dict:
                 log("job_arrived", tick, job=job.name, deadline_tick=job.deadline_tick, units=job.units)
 
         # ── STEP 4 Scheduling ─────────────────────────────────────────────
-        scheduling.run_scheduling(config, jobs, cells, tick, min_amr_speed, request_queue, log,
-                                   producer_by_product, store)
+        scheduling.run_scheduling(config, jobs, jobs_by_name, cells, tick, min_amr_speed,
+                                   request_queue, log, producer_by_product, store)
 
         # ── STEP 5 Replenishment ──────────────────────────────────────────
         run_replenishment(config, cells, jobs_by_name, tick, min_amr_speed, request_queue, log)
@@ -125,13 +125,36 @@ def run_simulation(config, log_path: str, run_id: str, start_time=None) -> dict:
 
 # ── Step 1 helper ──────────────────────────────────────────────────────────
 
+def _logical_job_completions(jobs):
+    """One (deadline_tick, completion_tick) pair per *logical* job -- a
+    split parent's completion is the max across its shards (None until every
+    shard is done), and its shards are skipped here so a split job is never
+    double-counted against its own deadline."""
+    jobs_by_name = {j.name: j for j in jobs}
+    shard_names = {n for j in jobs if j.is_split for n in j.shard_names}
+    for j in jobs:
+        if j.name in shard_names:
+            continue
+        if j.is_split:
+            shards = [jobs_by_name[n] for n in j.shard_names]
+            completion = (max(s.completion_tick for s in shards)
+                          if all(s.completion_tick is not None for s in shards) else None)
+            yield j.deadline_tick, completion
+        else:
+            yield j.deadline_tick, j.completion_tick
+
+
+def _all_jobs_complete(jobs):
+    return all(completion is not None for _, completion in _logical_job_completions(jobs))
+
+
 def _total_lateness(jobs, tick):
-    return sum(max(0, (j.completion_tick if j.completion_tick is not None else tick) - j.deadline_tick)
-               for j in jobs)
+    return sum(max(0, (completion if completion is not None else tick) - deadline)
+               for deadline, completion in _logical_job_completions(jobs))
 
 
 def _log_simulation_end(log, tick, reason, jobs):
-    unfinished = sum(1 for j in jobs if j.completion_tick is None)
+    unfinished = sum(1 for _, completion in _logical_job_completions(jobs) if completion is None)
     log("simulation_end", tick, reason=reason, makespan=tick,
         total_lateness=_total_lateness(jobs, tick), unfinished_jobs=unfinished)
 
@@ -378,7 +401,49 @@ def _transition_cell(cell, job, tick, log):
 
 # ── Result assembly ──────────────────────────────────────────────────────────
 
+def _job_row(j, jobs_by_name, makespan):
+    """One results.json row per *logical* job. A split parent is reported as
+    a single aggregated row (min/max across its shards); its shards are never
+    listed on their own -- see the shard_names filter in _build_result."""
+    if j.is_split:
+        shards = [jobs_by_name[n] for n in j.shard_names]
+        assigned_ticks = [s.assigned_tick for s in shards if s.assigned_tick is not None]
+        begin_ticks = [s.begin_tick for s in shards if s.begin_tick is not None]
+        complete_at_cell_ticks = [s.complete_at_cell_tick for s in shards if s.complete_at_cell_tick is not None]
+        completion_tick = (max(s.completion_tick for s in shards)
+                            if all(s.completion_tick is not None for s in shards) else None)
+        cell = ", ".join(s.assigned_cell for s in shards if s.assigned_cell)
+        cycles = [c for s in shards for c in s.cycle_ticks_list]
+        times_preempted = sum(s.times_preempted for s in shards)
+        assigned_tick = min(assigned_ticks) if assigned_ticks else None
+        begin_tick = min(begin_ticks) if begin_ticks else None
+        complete_at_cell_tick = max(complete_at_cell_ticks) if len(complete_at_cell_ticks) == len(shards) else None
+    else:
+        completion_tick = j.completion_tick
+        cell = j.assigned_cell
+        cycles = j.cycle_ticks_list
+        times_preempted = j.times_preempted
+        assigned_tick = j.assigned_tick
+        begin_tick = j.begin_tick
+        complete_at_cell_tick = j.complete_at_cell_tick
+
+    return {
+        "name": j.name, "cell": cell, "arrival_tick": j.arrival_tick,
+        "assigned_tick": assigned_tick, "begin_tick": begin_tick,
+        "complete_at_cell_tick": complete_at_cell_tick,
+        "completion_tick": completion_tick, "deadline_tick": j.deadline_tick,
+        "units": j.units,
+        "lateness": max(0, (completion_tick if completion_tick is not None else makespan) - j.deadline_tick),
+        "unfinished": completion_tick is None,
+        "avg_unit_cycle_ticks": round(sum(cycles) / len(cycles), 1) if cycles else None,
+        "times_preempted": times_preempted,
+        "shard_count": len(j.shard_names) if j.is_split else 0,
+    }
+
+
 def _build_result(makespan, termination_reason, cells, jobs, amrs, store):
+    jobs_by_name = {j.name: j for j in jobs}
+    shard_names = {n for j in jobs if j.is_split for n in j.shard_names}
     return {
         "makespan": makespan,
         "termination_reason": termination_reason,
@@ -398,22 +463,7 @@ def _build_result(makespan, termination_reason, cells, jobs, amrs, store):
              "starving_ticks": s.starving_ticks, "used": s.used}
             for c in cells for s in c.stations
         ],
-        "jobs": [
-            {
-                "name": j.name, "cell": j.assigned_cell, "arrival_tick": j.arrival_tick,
-                "assigned_tick": j.assigned_tick, "begin_tick": j.begin_tick,
-                "complete_at_cell_tick": j.complete_at_cell_tick,
-                "completion_tick": j.completion_tick, "deadline_tick": j.deadline_tick,
-                "units": j.units,
-                "lateness": max(0, (j.completion_tick if j.completion_tick is not None else makespan)
-                                 - j.deadline_tick),
-                "unfinished": j.completion_tick is None,
-                "avg_unit_cycle_ticks": (round(sum(j.cycle_ticks_list) / len(j.cycle_ticks_list), 1)
-                                          if j.cycle_ticks_list else None),
-                "times_preempted": j.times_preempted,
-            }
-            for j in jobs
-        ],
+        "jobs": [_job_row(j, jobs_by_name, makespan) for j in jobs if j.name not in shard_names],
         "amrs": [
             {"name": a.name, "type_name": a.type_name, "busy_ticks": a.busy_ticks,
              "trips": a.trips, "cost_dollars": a.cost_dollars}
