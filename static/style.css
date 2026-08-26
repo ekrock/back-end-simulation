@@ -103,6 +103,7 @@ body {
 .btn-delete:hover { background: #fee2e2; color: #dc2626; }
 
 /* ── Tables ───────────────────────────────────────────────────────────────── */
+.table-scroll-x { overflow-x: auto; }
 .ml-table {
   width: 100%;
   border-collapse: collapse;
