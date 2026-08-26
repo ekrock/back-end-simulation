@@ -19,13 +19,18 @@ body {
   align-items: center;
   justify-content: space-between;
 }
+.site-nav {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+}
 .site-nav a {
-  color: #94a3b8;
+  color: #f8fafc;
   font-size: 14px;
   font-weight: 500;
   text-decoration: none;
 }
-.site-nav a:hover { color: #f8fafc; }
+.site-nav a:hover { color: #94a3b8; }
 .site-title {
   color: #f8fafc;
   font-size: 1rem;
