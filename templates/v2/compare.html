@@ -8,7 +8,7 @@
   <form method="GET" action="{{ url_for('v2.v2_compare') }}" id="compare-form">
     <input type="hidden" name="runs" id="runs-field" value="{{ selected_ids | join(',') }}">
     <table class="ml-table" style="margin-bottom:14px">
-      <thead><tr><th></th><th>Run</th><th>Start Time</th><th>Policies</th><th>Makespan</th><th>Total Lateness</th></tr></thead>
+      <thead><tr><th></th><th>Run</th><th>Demonstrates</th><th>Start Time</th><th>Policies</th><th>Makespan</th><th>Total Lateness</th></tr></thead>
       <tbody>
         {% set ns = namespace(prev=none, shade=false) %}
         {% for run in all_runs %}
@@ -19,6 +19,7 @@
         <tr class="{{ 'row-shade' if (run.group_key and ns.shade) }}">
           <td><input type="checkbox" class="run-check" value="{{ run.run_id }}" {% if run.run_id in selected_ids %}checked{% endif %}></td>
           <td>{{ run.name }}</td>
+          <td>{{ run.demonstrates or "—" }}</td>
           <td class="mono">{{ run.start_time[:19] | replace("T", " ") }}</td>
           <td class="mono">{{ run.scheduling_policy }} / {{ run.replenishment_policy }}</td>
           <td class="num">{{ run.makespan }}</td>

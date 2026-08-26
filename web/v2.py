@@ -81,6 +81,10 @@ def _load_meta(run_id: str):
 
 
 _RUN_GROUP_RE = re.compile(r"^([A-Za-z]+)\d+:")
+_RUN_PREFIX_RE = re.compile(r"^([A-Za-z]+\d+):")
+_SCENARIO_DESCRIPTIONS_BY_PREFIX = {
+    _scenario_sort_prefix(name): description for name, description in SCENARIOS
+}
 
 
 def _run_group_key(run: dict):
@@ -93,12 +97,22 @@ def _run_group_key(run: dict):
     return m.group(1).upper() if m else None
 
 
+def _run_demonstrates(run: dict):
+    """Look up the scenario's 'Demonstrates' description via the same
+    'A01: ...' prefix scenario-derived runs are named with, so Compare
+    Runs can show it without needing to store the source scenario file
+    separately."""
+    m = _RUN_PREFIX_RE.match(run.get("name", ""))
+    return _SCENARIO_DESCRIPTIONS_BY_PREFIX.get(m.group(1).upper()) if m else None
+
+
 def _list_runs_alphabetical() -> list:
     """Past Runs displays alphabetically by name (e.g. A01, A02, B01, ...)
     rather than by recency, so a related series stays grouped and ordered."""
     runs = sorted(_list_runs(), key=lambda r: r.get("name", "").lower())
     for r in runs:
         r["group_key"] = _run_group_key(r)
+        r["demonstrates"] = _run_demonstrates(r)
     return runs
 
 
