@@ -76,7 +76,7 @@ Each pair in `static/v2/scenarios/` demonstrates one claim, most asserted by `te
 | `b3`/`b4`/`b5` (three/four/five AMRs) | Marginal-returns extension of the b1/b2 series | makespan 3,472 / 2,872 / 2,401 ticks |
 | `c1_reactive.csv` / `c2_predictive.csv` | Predictive replenishment beats reactive when AMR lead time is long relative to consumption | starvation 284 → 0 ticks; makespan 2,167 → 1,883 ticks (costs one extra AMR trip, 10 → 11) |
 | `d1_fifo.csv` / `d2_edd.csv` | Deadline-aware (EDD) scheduling beats FIFO on total lateness | total lateness 119 → 0 ticks |
-| `e1_unstaged.csv` / `e2_staged.csv` | Staging an unrelated job ahead of a dependent job lets the producer build a real buffer before consumption starts, eliminating starvation | starvation 46 → 0 ticks; makespan 219 → 152 ticks; Line2 utilization 14% → 87% |
+| `e1_unstaged.csv` / `e2_staged.csv` | A `min_available` of 0 lets a job compete for its cell with zero buffer; a threshold of 3 keeps it out of the race until an unrelated job takes the cell first, giving the producer time to build a real buffer | starvation 42 → 0 ticks; makespan 232 → 152 ticks; Line2 utilization 57% → 87% |
 
 ### Tests
 

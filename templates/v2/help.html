@@ -104,7 +104,7 @@
       <tr><td class="mono">b1_one_amr.csv / b2_two_amrs.csv</td><td>Adding AMRs reduces starvation and makespan.</td><td>AMR count 1 → 2.</td></tr>
       <tr><td class="mono">c1_reactive.csv / c2_predictive.csv</td><td>Predictive replenishment beats reactive when lead time is long relative to consumption.</td><td><code>UnitsLeft,0</code> → <code>PredictedOut,2</code>.</td></tr>
       <tr><td class="mono">d1_fifo.csv / d2_edd.csv</td><td>Deadline-aware scheduling beats FIFO on total lateness.</td><td><code>FIFO</code> → <code>EDD</code>.</td></tr>
-      <tr><td class="mono">e1_unstaged.csv / e2_staged.csv</td><td>Staging an unrelated job ahead of a dependent job lets the producer build a real buffer, eliminating starvation.</td><td>JobC's <code>capable_cells</code>: CellA → CellB.</td></tr>
+      <tr><td class="mono">e1_unstaged.csv / e2_staged.csv</td><td>A high enough dependency threshold keeps a job out of the race for its cell until an unrelated job takes it first, giving the producer time to build a real buffer and eliminating starvation.</td><td>JobB's <code>min_available</code>: 0 → 3.</td></tr>
     </tbody>
   </table>
 </section>
