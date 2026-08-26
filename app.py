@@ -114,6 +114,17 @@ def demo_login():
     return _request_auth()
 
 
+@app.route("/demo/v2")
+def demo_login_v2():
+    """Same vanity login as /demo, landing on V2 instead of V1."""
+    u = os.environ.get("DEMO_USERNAME", "")
+    p = os.environ.get("DEMO_PASSWORD", "")
+    if _check_auth(u, p):
+        session["username"] = u
+        return redirect(url_for("v2.v2_index"))
+    return _request_auth()
+
+
 @app.route("/")
 @require_auth
 def index(username: str):
